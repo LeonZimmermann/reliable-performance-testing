@@ -35,7 +35,7 @@ abstract class GenerateGatlingPagesTask : DefaultTask() {
             ?: error("Failed to parse OpenAPI spec at ${specFile.get().asFile.absolutePath}")
 
         val pkg = packageName.get()
-        val dir = outputDir.get().asFile.also { it.mkdirs() }
+        val dir = outputDir.get().asFile.also { it.deleteRecursively(); it.mkdirs() }
 
         val byTag = linkedMapOf<String, MutableList<Triple<String, PathItem.HttpMethod, Operation>>>()
         api.paths?.forEach { (path, item) ->
