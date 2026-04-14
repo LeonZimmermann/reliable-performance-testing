@@ -1,0 +1,32 @@
+### Test Hello endpoint without name
+GET http://localhost:8080/hello
+
+### Test Hello endpoint with name
+GET http://localhost:8080/hello?name=John
+
+### Test Get All Books
+GET http://localhost:8080/books
+
+### Test Create Book endpoint
+POST http://localhost:8080/books
+Content-Type: application/json
+
+{
+  "title": "The Pragmatic Programmer",
+  "author": "David Thomas and Andrew Hunt",
+  "isbn": "978-0135957059",
+  "price": 49.99,
+  "publisher": "Addison-Wesley"
+}
+
+### Test Create Book endpoint with another book
+POST http://localhost:8080/books
+Content-Type: application/json
+
+{
+  "title": "Clean Code",
+  "author": "Robert C. Martin",
+  "isbn": "978-0132350884",
+  "price": 44.99,
+  "publisher": "Prentice Hall"
+}

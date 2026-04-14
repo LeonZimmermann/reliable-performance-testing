@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: OAS Demo API
+  version: 1.0.0
+  description: Basic demo API to showcase OpenAPI-driven code generation for Spring Boot.
+servers:
+  - url: http://localhost:8080
+paths:
+  /hello:
+    get:
+      tags: [Hello]
+      operationId: getHello
+      summary: Returns a friendly greeting
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+          required: false
+          description: Optional name to greet
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Greeting'
+  /books:
+    get:
+      tags: [Books]
+      operationId: getBooks
+      summary: Get all books
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+    post:
+      tags: [Books]
+      operationId: createBook
+      summary: Create a new book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewBook'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+components:
+  schemas:
+    Greeting:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+    NewBook:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        isbn:
+          type: string
+        price:
+          type: number
+          format: double
+        publisher:
+          type: string
+      required: [title, author, isbn, price]
+    Book:
+      allOf:
+        - $ref: '#/components/schemas/NewBook'
+        - type: object
+          properties:
+            id:
+              type: integer
+              format: int64
+          required: [id]
