@@ -5,6 +5,11 @@ import io.gatling.javaapi.core.Simulation
 import io.gatling.javaapi.http.HttpDsl.*
 import org.example.gatling.pages.BooksPage
 import java.time.Duration
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalUnit
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class BooksSimulation : Simulation() {
 
@@ -24,39 +29,43 @@ class BooksSimulation : Simulation() {
     // Browse paginated results
     private val browse = scenario("Browse Books")
         .exec(BooksPage.getBooks())
-        .pause(Duration.ofSeconds(1))
+        .pause(1.seconds)
         .exec(BooksPage.getBooks(page = 1, size = 5))
-        .pause(Duration.ofSeconds(1))
+        .pause(1.seconds)
         .exec(BooksPage.getBooks(page = 0, size = 10))
 
     // Create a book and immediately fetch it by the returned ID
     private val createAndRead = scenario("Create and Read")
         .exec(BooksPage.createBook("Clean Code", "Robert C. Martin", "978-0132350884", 44.99))
-        .pause(Duration.ofSeconds(1))
+        .pause(1.seconds)
         .exec(BooksPage.getBookByIdFromSession())  // uses session "id" saved by createBook
 
     // Full CRUD lifecycle: create → read → update → delete
     private val fullLifecycle = scenario("Full Lifecycle")
         .exec(BooksPage.createBook("Design Patterns", "Erich Gamma", "978-0201633610", 54.99, publisher = "Addison-Wesley"))
-        .pause(Duration.ofMillis(500))
+        .pause(500.milliseconds)
         .exec(BooksPage.getBookByIdFromSession())
-        .pause(Duration.ofMillis(500))
+        .pause(500.milliseconds)
         .exec(BooksPage.updateBookFromSession())   // updates with same session fields (title/author/isbn/price)
-        .pause(Duration.ofMillis(500))
+        .pause(500.milliseconds)
         .exec(BooksPage.deleteBookFromSession())   // deletes by session "id"
+
+    inline val Int.milliseconds: Duration get() = toDuration(ChronoUnit.MILLIS)
+    inline val Int.seconds: Duration get() = toDuration(ChronoUnit.SECONDS)
+    fun Int.toDuration(unit: TemporalUnit): Duration = Duration.of(this.toLong(), unit)
 
     // Create books from feeder data at steady load
     private val createFromFeeder = scenario("Create from Feeder")
         .feed(bookFeeder)
         .exec(BooksPage.createBookFromSession())
-        .pause(Duration.ofSeconds(1))
+        .pause(1.seconds)
 
     init {
         setUp(
-            browse.injectOpen(rampUsers(20).during(Duration.ofSeconds(20))),
-            createAndRead.injectOpen(rampUsers(10).during(Duration.ofSeconds(15))),
-            fullLifecycle.injectOpen(rampUsers(10).during(Duration.ofSeconds(15))),
-            createFromFeeder.injectOpen(constantUsersPerSec(3.0).during(Duration.ofSeconds(20))),
+            browse.injectOpen(rampUsers(20).during(20.seconds)),
+            createAndRead.injectOpen(rampUsers(10).during(15.seconds)),
+            fullLifecycle.injectOpen(rampUsers(10).during(15.seconds)),
+            createFromFeeder.injectOpen(constantUsersPerSec(3.0).during(20.seconds)),
         ).protocols(httpProtocol)
             .assertions(
                 global().responseTime().max().lt(1000),
