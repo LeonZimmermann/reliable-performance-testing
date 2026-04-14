@@ -3,7 +3,14 @@
     "allow": [
       "Bash(./gradlew :gatling-tests:generateGatlingPages)",
       "Bash(./gradlew :gatling-tests:compileGatlingKotlin)",
-      "Bash(./gradlew :gatling-tests:compileGatlingKotlin --rerun-tasks)"
+      "Bash(./gradlew :gatling-tests:compileGatlingKotlin --rerun-tasks)",
+      "Bash(xargs ls:*)",
+      "Bash(./gradlew :backend:test --info)",
+      "Bash(find:*)",
+      "Bash(./gradlew :backend:test --rerun-tasks --tests \"org.example.BooksIntegrationTest\")",
+      "Bash(./gradlew :backend:test --rerun-tasks)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

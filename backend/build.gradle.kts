@@ -3,6 +3,7 @@ plugins {
     id("io.spring.dependency-management")
     kotlin("jvm") version "2.0.21"
     kotlin("plugin.spring") version "2.0.21"
+    kotlin("plugin.jpa") version "2.0.21"
     id("org.openapi.generator") version "7.4.0"
 }
 
@@ -28,6 +29,7 @@ dependencies {
     implementation("io.swagger.core.v3:swagger-annotations:2.2.20")
     implementation("org.openapitools:jackson-databind-nullable:0.2.6")
     runtimeOnly("com.h2database:h2")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
 sourceSets {
@@ -63,6 +65,10 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
 
 tasks.named("compileKotlin") { dependsOn("openApiGenerate") }
 tasks.named("compileJava") { dependsOn("openApiGenerate") }
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
 
 tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
     jvmArgs = listOf("-Dspring.output.ansi.enabled=ALWAYS")
