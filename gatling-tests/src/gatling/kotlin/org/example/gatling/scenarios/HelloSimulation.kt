@@ -6,60 +6,40 @@ import io.gatling.javaapi.http.HttpDsl.*
 import org.example.gatling.pages.HelloPage
 import java.time.Duration
 
-/**
- * Simple load test simulation for the Hello endpoint.
- * Demonstrates basic usage of the HelloPage page object.
- */
 class HelloSimulation : Simulation() {
 
-    // HTTP protocol configuration
     private val httpProtocol = http
         .baseUrl("http://localhost:8080")
         .acceptHeader("application/json")
-        .contentTypeHeader("application/json")
 
-    // Scenario 1: Test default greeting
-    private val defaultGreetingScenario = scenario("Default Greeting")
-        .exec(HelloPage.getDefaultGreeting())
+    private val defaultGreeting = scenario("Default Greeting")
+        .exec(HelloPage.getHello())
         .pause(Duration.ofSeconds(1))
 
-    // Scenario 2: Test personalized greetings with different names
-    private val personalizedGreetingScenario = scenario("Personalized Greeting")
-        .exec(HelloPage.getPersonalizedGreeting("Alice"))
+    private val namedGreeting = scenario("Named Greeting")
+        .exec(HelloPage.getHello("Alice"))
         .pause(Duration.ofSeconds(1))
-        .exec(HelloPage.getPersonalizedGreeting("Bob"))
-        .pause(Duration.ofSeconds(1))
-        .exec(HelloPage.getPersonalizedGreeting("Charlie"))
+        .exec(HelloPage.getHello("Bob"))
 
-    // Scenario 3: Test with dynamic names from a feeder
-    private val nameFeeder = listFeeder(listOf(
-        mapOf("userName" to "David"),
-        mapOf("userName" to "Emma"),
-        mapOf("userName" to "Frank"),
-        mapOf("userName" to "Grace")
+    private val names = listFeeder(listOf(
+        mapOf("name" to "Carol"),
+        mapOf("name" to "Dave"),
+        mapOf("name" to "Eve"),
     )).random()
 
-    private val dynamicGreetingScenario = scenario("Dynamic Greeting")
-        .feed(nameFeeder)
-        .exec(HelloPage.getGreetingFromSession())
-        .pause(Duration.ofSeconds(1))
+    private val dynamicGreeting = scenario("Dynamic Greeting")
+        .feed(names)
+        .exec(HelloPage.getHelloFromSession())
 
-    // Load simulation setup
     init {
         setUp(
-            defaultGreetingScenario.injectOpen(
-                rampUsers(10).during(Duration.ofSeconds(5))
-            ),
-            personalizedGreetingScenario.injectOpen(
-                rampUsers(20).during(Duration.ofSeconds(10))
-            ),
-            dynamicGreetingScenario.injectOpen(
-                constantUsersPerSec(5.0).during(Duration.ofSeconds(10))
-            )
+            defaultGreeting.injectOpen(rampUsers(10).during(Duration.ofSeconds(10))),
+            namedGreeting.injectOpen(rampUsers(10).during(Duration.ofSeconds(10))),
+            dynamicGreeting.injectOpen(constantUsersPerSec(2.0).during(Duration.ofSeconds(10))),
         ).protocols(httpProtocol)
             .assertions(
                 global().responseTime().max().lt(500),
-                global().successfulRequests().percent().gt(95.0)
+                global().successfulRequests().percent().gt(95.0),
             )
     }
 }

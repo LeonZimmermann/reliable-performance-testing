@@ -16,6 +16,24 @@ repositories {
     mavenCentral()
 }
 
+val generateGatlingPages = tasks.register<GenerateGatlingPagesTask>("generateGatlingPages") {
+    specFile.set(file("../oas/openapi.yaml"))
+    outputDir.set(layout.buildDirectory.dir("generated/gatling/kotlin"))
+    packageName.set("org.example.gatling.pages")
+}
+
+sourceSets {
+    named("gatling") {
+        kotlin {
+            srcDir(generateGatlingPages.flatMap { it.outputDir })
+        }
+    }
+}
+
+tasks.named("compileGatlingKotlin") {
+    dependsOn(generateGatlingPages)
+}
+
 dependencies {
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib")

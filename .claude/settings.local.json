@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew :gatling-tests:generateGatlingPages)",
+      "Bash(./gradlew :gatling-tests:compileGatlingKotlin)",
+      "Bash(./gradlew :gatling-tests:compileGatlingKotlin --rerun-tasks)"
+    ]
+  }
+}
