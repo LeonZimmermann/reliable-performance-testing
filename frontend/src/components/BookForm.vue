@@ -46,15 +46,16 @@ function isChecked(authorId: number): boolean {
     </div>
 
     <div class="field">
-      <label for="author">Author (text) *</label>
-      <input
+      <label for="author">Author *</label>
+      <select
         id="author"
-        type="text"
         :value="modelValue.author"
-        @input="update('author', ($event.target as HTMLInputElement).value)"
+        @change="update('author', ($event.target as HTMLSelectElement).value)"
         required
-        placeholder="Author name"
-      />
+      >
+        <option value="" disabled>— select author —</option>
+        <option v-for="a in availableAuthors" :key="a.id" :value="a.name">{{ a.name }}</option>
+      </select>
     </div>
 
     <div class="field">
@@ -142,7 +143,8 @@ label {
 }
 
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+select {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -154,7 +156,8 @@ input[type="number"] {
 }
 
 input[type="text"]:focus,
-input[type="number"]:focus {
+input[type="number"]:focus,
+select:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);

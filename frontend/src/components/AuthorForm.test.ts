@@ -16,6 +16,26 @@ describe('AuthorForm', () => {
     expect(wrapper.find('#biography').exists()).toBe(true)
   })
 
+  it('origin field is a select element', () => {
+    const wrapper = mount(AuthorForm, {
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save' },
+    })
+    expect(wrapper.find('#origin').element.tagName).toBe('SELECT')
+  })
+
+  it('origin select contains country options', () => {
+    const wrapper = mount(AuthorForm, {
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save' },
+    })
+    const options = wrapper.find('#origin').findAll('option')
+    // placeholder + countries
+    expect(options.length).toBeGreaterThan(1)
+    const values = options.map((o) => o.element.value)
+    expect(values).toContain('Germany')
+    expect(values).toContain('United Kingdom')
+    expect(values).toContain('France')
+  })
+
   it('emits update:modelValue with updated name when name input changes', async () => {
     const wrapper = mount(AuthorForm, {
       props: { modelValue: baseModel, loading: false, submitLabel: 'Save' },
@@ -24,6 +44,24 @@ describe('AuthorForm', () => {
     const emitted = wrapper.emitted('update:modelValue') as [NewAuthor][]
     expect(emitted).toHaveLength(1)
     expect(emitted[0][0].name).toBe('Jane Austen')
+  })
+
+  it('emits the selected country as origin', async () => {
+    const wrapper = mount(AuthorForm, {
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save' },
+    })
+    await wrapper.find('#origin').setValue('France')
+    const emitted = wrapper.emitted('update:modelValue') as [NewAuthor][]
+    expect(emitted[0][0].origin).toBe('France')
+  })
+
+  it('emits undefined origin when the placeholder is selected', async () => {
+    const wrapper = mount(AuthorForm, {
+      props: { modelValue: { ...baseModel, origin: 'France' }, loading: false, submitLabel: 'Save' },
+    })
+    await wrapper.find('#origin').setValue('')
+    const emitted = wrapper.emitted('update:modelValue') as [NewAuthor][]
+    expect(emitted[0][0].origin).toBeUndefined()
   })
 
   it('emits a Date object when birthdate is entered', async () => {

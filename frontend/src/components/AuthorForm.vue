@@ -12,6 +12,16 @@ const emit = defineEmits<{
   'submit': []
 }>()
 
+const countries = [
+  'Afghanistan', 'Argentina', 'Australia', 'Austria', 'Belgium', 'Brazil', 'Canada',
+  'Chile', 'China', 'Colombia', 'Czech Republic', 'Denmark', 'Egypt', 'Finland',
+  'France', 'Germany', 'Greece', 'Hungary', 'India', 'Indonesia', 'Iran', 'Ireland',
+  'Israel', 'Italy', 'Japan', 'Kenya', 'Mexico', 'Netherlands', 'New Zealand', 'Nigeria',
+  'Norway', 'Pakistan', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Romania', 'Russia',
+  'Saudi Arabia', 'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland',
+  'Thailand', 'Turkey', 'Ukraine', 'United Kingdom', 'United States', 'Venezuela', 'Vietnam',
+]
+
 function update(field: keyof NewAuthor, value: string) {
   if (field === 'birthdate') {
     emit('update:modelValue', { ...props.modelValue, birthdate: value ? new Date(value) : undefined })
@@ -47,13 +57,14 @@ function update(field: keyof NewAuthor, value: string) {
 
     <div class="field">
       <label for="origin">Origin</label>
-      <input
+      <select
         id="origin"
-        type="text"
         :value="modelValue.origin ?? ''"
-        @input="update('origin', ($event.target as HTMLInputElement).value)"
-        placeholder="Country or region"
-      />
+        @change="update('origin', ($event.target as HTMLSelectElement).value)"
+      >
+        <option value="">— select country —</option>
+        <option v-for="country in countries" :key="country" :value="country">{{ country }}</option>
+      </select>
     </div>
 
     <div class="field">
@@ -97,6 +108,7 @@ label {
 }
 
 input,
+select,
 textarea {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);
@@ -115,6 +127,7 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--color-primary);

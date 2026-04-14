@@ -2,13 +2,18 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import BookForm from './BookForm.vue'
 import type { NewBook } from '../types/book'
+import type { AuthorSummary } from '../types/author'
 
 describe('BookForm', () => {
   const baseModel: NewBook = { title: '', author: '', isbn: '', price: 0 }
+  const availableAuthors: AuthorSummary[] = [
+    { id: 1, name: 'Jane Austen' },
+    { id: 2, name: 'Tolkien' },
+  ]
 
   it('renders all required fields', () => {
     const wrapper = mount(BookForm, {
-      props: { modelValue: baseModel, loading: false, submitLabel: 'Save' },
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save', availableAuthors },
     })
     expect(wrapper.find('#title').exists()).toBe(true)
     expect(wrapper.find('#author').exists()).toBe(true)
@@ -17,9 +22,35 @@ describe('BookForm', () => {
     expect(wrapper.find('#publisher').exists()).toBe(true)
   })
 
+  it('author field is a select element', () => {
+    const wrapper = mount(BookForm, {
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save', availableAuthors },
+    })
+    expect(wrapper.find('#author').element.tagName).toBe('SELECT')
+  })
+
+  it('author select is populated with available authors', () => {
+    const wrapper = mount(BookForm, {
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save', availableAuthors },
+    })
+    const options = wrapper.find('#author').findAll('option')
+    const values = options.map((o) => o.element.value)
+    expect(values).toContain('Jane Austen')
+    expect(values).toContain('Tolkien')
+  })
+
+  it('emits update:modelValue with selected author name', async () => {
+    const wrapper = mount(BookForm, {
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save', availableAuthors },
+    })
+    await wrapper.find('#author').setValue('Jane Austen')
+    const emitted = wrapper.emitted('update:modelValue') as [NewBook][]
+    expect(emitted[0][0].author).toBe('Jane Austen')
+  })
+
   it('emits update:modelValue with updated title when title changes', async () => {
     const wrapper = mount(BookForm, {
-      props: { modelValue: baseModel, loading: false, submitLabel: 'Save' },
+      props: { modelValue: baseModel, loading: false, submitLabel: 'Save', availableAuthors },
     })
     await wrapper.find('#title').setValue('Clean Code')
     const emitted = wrapper.emitted('update:modelValue') as [NewBook][]
@@ -42,10 +73,7 @@ describe('BookForm', () => {
         modelValue: { ...baseModel, authorIds: [] },
         loading: false,
         submitLabel: 'Save',
-        availableAuthors: [
-          { id: 1, name: 'Jane Austen' },
-          { id: 2, name: 'Tolkien' },
-        ],
+        availableAuthors,
       },
     })
     await wrapper.findAll('input[type="checkbox"]')[0].trigger('change')
