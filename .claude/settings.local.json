@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls:*)",
+      "Bash(./gradlew :backend:test --info)",
+      "Bash(find:*)",
+      "Bash(./gradlew :backend:test --rerun-tasks --tests \"org.example.BooksIntegrationTest\")",
+      "Bash(./gradlew :backend:test --rerun-tasks)"
+    ]
+  }
+}

@@ -6,39 +6,31 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
-  /hello:
-    get:
-      tags: [Hello]
-      operationId: getHello
-      summary: Returns a friendly greeting
-      parameters:
-        - in: query
-          name: name
-          schema:
-            type: string
-          required: false
-          description: Optional name to greet
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Greeting'
   /books:
     get:
       tags: [Books]
       operationId: getBooks
-      summary: Get all books
+      summary: Get all books (paginated)
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 0
+          required: false
+        - in: query
+          name: size
+          schema:
+            type: integer
+            default: 20
+          required: false
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Book'
+                $ref: '#/components/schemas/BookPage'
     post:
       tags: [Books]
       operationId: createBook
@@ -56,14 +48,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Book'
+  /books/{id}:
+    get:
+      tags: [Books]
+      operationId: getBookById
+      summary: Get a book by ID
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Not Found
+    put:
+      tags: [Books]
+      operationId: updateBook
+      summary: Update a book
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewBook'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Not Found
+    delete:
+      tags: [Books]
+      operationId: deleteBook
+      summary: Delete a book
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
 components:
   schemas:
-    Greeting:
-      type: object
-      properties:
-        message:
-          type: string
-      required: [message]
     NewBook:
       type: object
       properties:
@@ -88,3 +137,20 @@ components:
               type: integer
               format: int64
           required: [id]
+    BookPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+      required: [content, totalElements, totalPages, size, number]
