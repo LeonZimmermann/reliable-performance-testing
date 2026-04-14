@@ -21,33 +21,42 @@ class BooksSimulation : Simulation() {
         mapOf("title" to "The Catcher in the Rye", "author" to "J.D. Salinger",       "isbn" to "978-0316769174", "price" to 13.50),
     )).circular()
 
-    private val readBooks = scenario("Read Books")
+    // Browse paginated results
+    private val browse = scenario("Browse Books")
         .exec(BooksPage.getBooks())
         .pause(Duration.ofSeconds(1))
-
-    private val createBooks = scenario("Create Books")
-        .exec(BooksPage.createBook("Clean Code",     "Robert C. Martin", "978-0132350884", 44.99))
+        .exec(BooksPage.getBooks(page = 1, size = 5))
         .pause(Duration.ofSeconds(1))
-        .exec(BooksPage.createBook("Design Patterns", "Erich Gamma",     "978-0201633610", 54.99, publisher = "Addison-Wesley"))
+        .exec(BooksPage.getBooks(page = 0, size = 10))
 
-    private val createFromFeeder = scenario("Create Books from Feeder")
+    // Create a book and immediately fetch it by the returned ID
+    private val createAndRead = scenario("Create and Read")
+        .exec(BooksPage.createBook("Clean Code", "Robert C. Martin", "978-0132350884", 44.99))
+        .pause(Duration.ofSeconds(1))
+        .exec(BooksPage.getBookByIdFromSession())  // uses session "id" saved by createBook
+
+    // Full CRUD lifecycle: create → read → update → delete
+    private val fullLifecycle = scenario("Full Lifecycle")
+        .exec(BooksPage.createBook("Design Patterns", "Erich Gamma", "978-0201633610", 54.99, publisher = "Addison-Wesley"))
+        .pause(Duration.ofMillis(500))
+        .exec(BooksPage.getBookByIdFromSession())
+        .pause(Duration.ofMillis(500))
+        .exec(BooksPage.updateBookFromSession())   // updates with same session fields (title/author/isbn/price)
+        .pause(Duration.ofMillis(500))
+        .exec(BooksPage.deleteBookFromSession())   // deletes by session "id"
+
+    // Create books from feeder data at steady load
+    private val createFromFeeder = scenario("Create from Feeder")
         .feed(bookFeeder)
         .exec(BooksPage.createBookFromSession())
         .pause(Duration.ofSeconds(1))
 
-    private val mixedOps = scenario("Mixed Operations")
-        .exec(BooksPage.getBooks())
-        .pause(Duration.ofSeconds(1))
-        .exec(BooksPage.createBook("Effective Java", "Joshua Bloch", "978-0134685991", 49.99))
-        .pause(Duration.ofSeconds(1))
-        .exec(BooksPage.getBooks())
-
     init {
         setUp(
-            readBooks.injectOpen(constantUsersPerSec(2.0).during(Duration.ofSeconds(20))),
-            createBooks.injectOpen(rampUsers(10).during(Duration.ofSeconds(15))),
-            createFromFeeder.injectOpen(constantUsersPerSec(3.0).during(Duration.ofSeconds(15))),
-            mixedOps.injectOpen(rampUsers(10).during(Duration.ofSeconds(20))),
+            browse.injectOpen(rampUsers(20).during(Duration.ofSeconds(20))),
+            createAndRead.injectOpen(rampUsers(10).during(Duration.ofSeconds(15))),
+            fullLifecycle.injectOpen(rampUsers(10).during(Duration.ofSeconds(15))),
+            createFromFeeder.injectOpen(constantUsersPerSec(3.0).during(Duration.ofSeconds(20))),
         ).protocols(httpProtocol)
             .assertions(
                 global().responseTime().max().lt(1000),

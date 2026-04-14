@@ -4,7 +4,6 @@ import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.core.Simulation
 import io.gatling.javaapi.http.HttpDsl.*
 import org.example.gatling.pages.BooksPage
-import org.example.gatling.pages.HelloPage
 import java.time.Duration
 
 class FullApiSimulation : Simulation() {
@@ -14,34 +13,38 @@ class FullApiSimulation : Simulation() {
         .acceptHeader("application/json")
         .contentTypeHeader("application/json")
 
-    private val userJourney = scenario("User Journey")
-        .exec(HelloPage.getHello("TestUser"))
-        .pause(Duration.ofSeconds(1))
-        .exec(BooksPage.getBooks())
-        .pause(Duration.ofSeconds(1))
-        .exec(BooksPage.createBook("Gatling in Action", "Test Author", "978-0000000001", 39.99))
-        .pause(Duration.ofSeconds(1))
-        .exec(BooksPage.getBooks())
-        .pause(Duration.ofSeconds(1))
-        .exec(HelloPage.getHello())
-
-    private val browseOnly = scenario("Browse Only")
-        .exec(HelloPage.getHello())
+    // Read-only users: browse multiple pages
+    private val reader = scenario("Reader")
+        .exec(BooksPage.getBooks(page = 0, size = 10))
         .pause(Duration.ofSeconds(1), Duration.ofSeconds(3))
-        .exec(BooksPage.getBooks())
+        .exec(BooksPage.getBooks(page = 1, size = 10))
+        .pause(Duration.ofSeconds(1), Duration.ofSeconds(3))
+        .exec(BooksPage.getBooks(page = 0, size = 20))
 
-    private val heavyCreate = scenario("Heavy Create")
-        .exec(BooksPage.createBook("Book A", "Author A", "978-1111111111", 19.99))
+    // Writers: create a book and look it up
+    private val writer = scenario("Writer")
+        .exec(BooksPage.createBook("Refactoring", "Martin Fowler", "978-0201485677", 49.99))
+        .pause(Duration.ofSeconds(1))
+        .exec(BooksPage.getBookByIdFromSession())
+
+    // Power users: full create → update → delete cycle
+    private val powerUser = scenario("Power User")
+        .exec(BooksPage.createBook("The Pragmatic Programmer", "Dave Thomas", "978-0135957059", 49.95))
+        // createBook saves id/title/author/isbn/price to session; patch the title before updating
+        .exec { session -> session.set("title", "The Pragmatic Programmer, 20th Anniversary").set("price", 54.95) }
         .pause(Duration.ofMillis(500))
-        .exec(BooksPage.createBook("Book B", "Author B", "978-2222222222", 24.99))
+        .exec(BooksPage.updateBookFromSession())   // PUT /books/#{id} with updated session fields
+        .pause(Duration.ofMillis(500))
+        .exec(BooksPage.deleteBookFromSession())   // DELETE /books/#{id}
         .pause(Duration.ofMillis(500))
         .exec(BooksPage.getBooks())
 
     init {
         setUp(
-            userJourney.injectOpen(rampUsers(20).during(Duration.ofSeconds(30))),
-            browseOnly.injectOpen(rampUsers(50).during(Duration.ofSeconds(30))),
-            heavyCreate.injectOpen(rampUsers(10).during(Duration.ofSeconds(20))),
+            // Mostly readers, fewer writers, handful of power users
+            reader.injectOpen(rampUsers(60).during(Duration.ofSeconds(40))),
+            writer.injectOpen(rampUsers(20).during(Duration.ofSeconds(30))),
+            powerUser.injectOpen(rampUsers(10).during(Duration.ofSeconds(20))),
         ).protocols(httpProtocol)
             .assertions(
                 global().responseTime().max().lt(2000),
