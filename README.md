@@ -35,7 +35,8 @@ Open a second terminal and run:
 
 ```bash
 cd frontend
-npm install     # only needed the first time
+npm install        # only needed the first time
+npm run generate   # regenerate API client from oas/openapi.yaml (re-run after spec changes)
 npm run dev
 ```
 
@@ -71,10 +72,22 @@ The app opens at **`http://localhost:5173`**.
 - **Vite** as the dev server and build tool
 - Native `fetch` for HTTP — no third-party HTTP client
 
+### API client generation
+
+The TypeScript API client and models are generated from `oas/openapi.yaml` using `@openapitools/openapi-generator-cli` (generator: `typescript-fetch`). Run this after any spec change:
+
+```bash
+cd frontend
+npm run generate
+```
+
+The generated folder `src/generated/` is gitignored — it must be regenerated on each fresh checkout.
+
 ### Building for production
 
 ```bash
 cd frontend
+npm run generate   # ensure types are up to date
 npm run build
 ```
 

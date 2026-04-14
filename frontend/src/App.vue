@@ -3,7 +3,9 @@
     <span class="nav-brand">OAS Demo</span>
     <div class="nav-links">
       <RouterLink to="/books">Books</RouterLink>
+      <RouterLink to="/authors">Authors</RouterLink>
       <RouterLink to="/books/create" class="btn btn-primary btn-sm">+ New Book</RouterLink>
+      <RouterLink to="/authors/create" class="btn btn-secondary btn-sm">+ New Author</RouterLink>
     </div>
   </nav>
   <main>
@@ -26,7 +28,6 @@
   --color-border: #e5e7eb;
   --color-bg: #ffffff;
   --color-bg-alt: #f9fafb;
-  --color-success-bg: #ecfdf5;
   --color-error-bg: #fef2f2;
   --color-error-text: #b91c1c;
   --radius: 6px;
@@ -66,15 +67,15 @@ nav {
   gap: 1.25rem;
 }
 
-.nav-links a {
+.nav-links > a:not(.btn) {
   text-decoration: none;
   color: var(--color-text-muted);
   font-weight: 500;
   transition: color 0.15s;
 }
 
-.nav-links a:hover,
-.nav-links a.router-link-active {
+.nav-links > a:not(.btn):hover,
+.nav-links > a:not(.btn).router-link-active {
   color: var(--color-primary);
 }
 

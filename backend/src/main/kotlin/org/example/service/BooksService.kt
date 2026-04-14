@@ -1,22 +1,38 @@
 package org.example.service
 
 import org.example.entity.Book as BookEntity
+import org.example.generated.model.AuthorSummary
 import org.example.generated.model.Book
 import org.example.generated.model.BookPage
 import org.example.generated.model.NewBook
+import org.example.repository.AuthorRepository
 import org.example.repository.BookRepository
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 
 @Service
-class BooksService(private val bookRepository: BookRepository) {
+@Transactional
+class BooksService(
+    private val bookRepository: BookRepository,
+    private val authorRepository: AuthorRepository
+) {
 
     fun createBook(newBook: NewBook): Book {
-        return bookRepository.save(newBook.toEntity()).toModel()
+        val entity = BookEntity(
+            title = newBook.title,
+            author = newBook.author,
+            isbn = newBook.isbn,
+            price = newBook.price,
+            publisher = newBook.publisher
+        )
+        entity.authors = resolveAuthors(newBook.authorIds)
+        return bookRepository.save(entity).toModel()
     }
 
+    @Transactional(readOnly = true)
     fun getBooks(page: Int, size: Int): BookPage {
         val result = bookRepository.findAll(PageRequest.of(page, size))
         return BookPage(
@@ -28,6 +44,7 @@ class BooksService(private val bookRepository: BookRepository) {
         )
     }
 
+    @Transactional(readOnly = true)
     fun getBookById(id: Long): Book {
         return bookRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found: $id") }
@@ -37,13 +54,15 @@ class BooksService(private val bookRepository: BookRepository) {
     fun updateBook(id: Long, newBook: NewBook): Book {
         val existing = bookRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found: $id") }
-        return bookRepository.save(existing.copy(
+        val updated = existing.copy(
             title = newBook.title,
             author = newBook.author,
             isbn = newBook.isbn,
             price = newBook.price,
             publisher = newBook.publisher
-        )).toModel()
+        )
+        updated.authors = resolveAuthors(newBook.authorIds)
+        return bookRepository.save(updated).toModel()
     }
 
     fun deleteBook(id: Long) {
@@ -53,13 +72,10 @@ class BooksService(private val bookRepository: BookRepository) {
         bookRepository.deleteById(id)
     }
 
-    private fun NewBook.toEntity() = BookEntity(
-        title = title,
-        author = author,
-        isbn = isbn,
-        price = price,
-        publisher = publisher
-    )
+    private fun resolveAuthors(authorIds: List<Long>?): MutableSet<org.example.entity.Author> =
+        authorIds?.takeIf { it.isNotEmpty() }
+            ?.let { authorRepository.findAllById(it).toMutableSet() }
+            ?: mutableSetOf()
 
     private fun BookEntity.toModel() = Book(
         id = id!!,
@@ -67,6 +83,7 @@ class BooksService(private val bookRepository: BookRepository) {
         author = author,
         isbn = isbn,
         price = price,
-        publisher = publisher
+        publisher = publisher,
+        authors = authors.map { AuthorSummary(id = it.id!!, name = it.name) }
     )
 }

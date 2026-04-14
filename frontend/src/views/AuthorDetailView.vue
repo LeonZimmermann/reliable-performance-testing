@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { booksApi, authorsApi, ResponseError } from '../api/index'
-import BookForm from '../components/BookForm.vue'
-import type { Book, NewBook } from '../types/book'
-import type { AuthorSummary } from '../types/author'
+import { authorsApi, ResponseError } from '../api/index'
+import AuthorForm from '../components/AuthorForm.vue'
+import type { Author, NewAuthor } from '../types/author'
 
 const route = useRoute()
 const router = useRouter()
 const id = Number(route.params.id)
 
-const book = ref<Book | null>(null)
+const author = ref<Author | null>(null)
 const editing = ref(false)
-const form = ref<NewBook>({ title: '', author: '', isbn: '', price: 0 })
-const availableAuthors = ref<AuthorSummary[]>([])
+const form = ref<NewAuthor>({ name: '' })
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
@@ -23,17 +21,12 @@ const notFound = ref(false)
 onMounted(async () => {
   loading.value = true
   try {
-    const [loadedBook, authorPage] = await Promise.all([
-      booksApi.getBookById({ id }),
-      authorsApi.getAuthors({ page: 0, size: 200 }),
-    ])
-    book.value = loadedBook
-    availableAuthors.value = authorPage.content.map((a) => ({ id: a.id, name: a.name }))
+    author.value = await authorsApi.getAuthorById({ id })
   } catch (e) {
     if (e instanceof ResponseError && e.response.status === 404) {
       notFound.value = true
     } else {
-      error.value = e instanceof Error ? e.message : 'Failed to load book'
+      error.value = e instanceof Error ? e.message : 'Failed to load author'
     }
   } finally {
     loading.value = false
@@ -41,45 +34,38 @@ onMounted(async () => {
 })
 
 function startEdit() {
-  if (!book.value) return
+  if (!author.value) return
   form.value = {
-    title: book.value.title,
-    author: book.value.author,
-    isbn: book.value.isbn,
-    price: book.value.price,
-    publisher: book.value.publisher,
-    authorIds: book.value.authors.map((a) => a.id),
+    name: author.value.name,
+    birthdate: author.value.birthdate,
+    origin: author.value.origin,
+    biography: author.value.biography,
   }
   editing.value = true
   error.value = null
 }
 
 async function handleUpdate() {
-  if (!book.value) return
   saving.value = true
   error.value = null
   try {
-    book.value = await booksApi.updateBook({
-      id,
-      newBook: { ...form.value, publisher: form.value.publisher || undefined },
-    })
+    author.value = await authorsApi.updateAuthor({ id, newAuthor: form.value })
     editing.value = false
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to update book'
+    error.value = e instanceof Error ? e.message : 'Failed to update author'
   } finally {
     saving.value = false
   }
 }
 
 async function handleDelete() {
-  if (!book.value) return
-  if (!confirm(`Delete "${book.value.title}"?`)) return
+  if (!author.value || !confirm(`Delete "${author.value.name}"?`)) return
   deleting.value = true
   try {
-    await booksApi.deleteBook({ id })
-    router.push({ name: 'book-list' })
+    await authorsApi.deleteAuthor({ id })
+    router.push({ name: 'author-list' })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to delete book'
+    error.value = e instanceof Error ? e.message : 'Failed to delete author'
     deleting.value = false
   }
 }
@@ -87,23 +73,23 @@ async function handleDelete() {
 
 <template>
   <div class="back-link">
-    <RouterLink to="/books">← Back to books</RouterLink>
+    <RouterLink to="/authors">← Back to authors</RouterLink>
   </div>
 
   <div v-if="loading" class="loading">Loading…</div>
 
   <div v-else-if="notFound" class="not-found">
-    <h2>Book not found</h2>
-    <p>This book may have been deleted.</p>
-    <RouterLink to="/books" class="btn btn-secondary">Back to list</RouterLink>
+    <h2>Author not found</h2>
+    <p>This author may have been deleted.</p>
+    <RouterLink to="/authors" class="btn btn-secondary">Back to list</RouterLink>
   </div>
 
-  <template v-else-if="book">
+  <template v-else-if="author">
     <div class="detail-card">
       <div class="card-header">
         <div>
-          <h1>{{ book.title }}</h1>
-          <p class="subtitle">by {{ book.author }}</p>
+          <h1>{{ author.name }}</h1>
+          <p v-if="author.origin" class="subtitle">{{ author.origin }}</p>
         </div>
         <div class="header-actions" v-if="!editing">
           <button class="btn btn-secondary" @click="startEdit">Edit</button>
@@ -117,43 +103,29 @@ async function handleDelete() {
 
       <template v-if="!editing">
         <dl class="fields">
-          <div class="field-row">
-            <dt>ISBN</dt>
-            <dd class="mono">{{ book.isbn }}</dd>
+          <div class="field-row" v-if="author.birthdate">
+            <dt>Born</dt>
+            <dd>{{ author.birthdate }}</dd>
           </div>
-          <div class="field-row">
-            <dt>Price</dt>
-            <dd>€ {{ book.price.toFixed(2) }}</dd>
+          <div class="field-row" v-if="author.origin">
+            <dt>Origin</dt>
+            <dd>{{ author.origin }}</dd>
           </div>
-          <div class="field-row">
-            <dt>Publisher</dt>
-            <dd :class="{ muted: !book.publisher }">{{ book.publisher ?? '—' }}</dd>
-          </div>
-          <div class="field-row">
-            <dt>Authors</dt>
-            <dd>
-              <span v-if="book.authors.length === 0" class="muted">—</span>
-              <ul v-else class="author-links">
-                <li v-for="a in book.authors" :key="a.id">
-                  <RouterLink :to="{ name: 'author-detail', params: { id: a.id } }">
-                    {{ a.name }}
-                  </RouterLink>
-                </li>
-              </ul>
-            </dd>
+          <div class="field-row" v-if="author.biography">
+            <dt>Biography</dt>
+            <dd class="biography">{{ author.biography }}</dd>
           </div>
           <div class="field-row">
             <dt>ID</dt>
-            <dd class="muted mono">{{ book.id }}</dd>
+            <dd class="muted mono">{{ author.id }}</dd>
           </div>
         </dl>
       </template>
 
       <template v-else>
-        <BookForm
+        <AuthorForm
           v-model="form"
           :loading="saving"
-          :available-authors="availableAuthors"
           submit-label="Save Changes"
           @submit="handleUpdate"
         >
@@ -162,7 +134,7 @@ async function handleDelete() {
               Cancel
             </button>
           </template>
-        </BookForm>
+        </AuthorForm>
       </template>
     </div>
   </template>
@@ -265,6 +237,11 @@ dd {
   font-size: 0.9375rem;
 }
 
+.biography {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
 .muted {
   color: var(--color-text-muted);
 }
@@ -272,24 +249,5 @@ dd {
 .mono {
   font-family: monospace;
   font-size: 0.875rem;
-}
-
-.author-links {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-
-.author-links a {
-  color: var(--color-primary);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.author-links a:hover {
-  text-decoration: underline;
 }
 </style>

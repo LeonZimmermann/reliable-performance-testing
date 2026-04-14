@@ -1,6 +1,9 @@
 package org.example
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.example.entity.Author
 import org.example.entity.Book
+import org.example.repository.AuthorRepository
 import org.example.repository.BookRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,14 +23,20 @@ class BooksIntegrationTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var bookRepository: BookRepository
+    @Autowired lateinit var authorRepository: AuthorRepository
+    @Autowired lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun setUp() {
         bookRepository.deleteAll()
+        authorRepository.deleteAll()
     }
 
     private fun savedBook(title: String = "Test Book", isbn: String = "978-0-000000-00-0") =
         bookRepository.save(Book(title = title, author = "Author", isbn = isbn, price = 9.99))
+
+    private fun savedAuthor(name: String = "Test Author") =
+        authorRepository.save(Author(name = name))
 
     @Test
     fun `POST books - creates a book and returns 201`() {
@@ -41,6 +50,45 @@ class BooksIntegrationTest {
             jsonPath("$.author") { value("Robert Martin") }
             jsonPath("$.isbn") { value("978-0-13-235088-4") }
             jsonPath("$.price") { value(29.99) }
+            jsonPath("$.authors") { isArray() }
+        }
+    }
+
+    @Test
+    fun `POST books with authorIds - links authors to book`() {
+        val author = savedAuthor("Robert Martin")
+
+        val response = mockMvc.post("/books") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"title":"Clean Code","author":"Robert Martin","isbn":"978-0-13-235088-4","price":29.99,"authorIds":[${author.id}]}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.authors.length()") { value(1) }
+            jsonPath("$.authors[0].id") { value(author.id) }
+            jsonPath("$.authors[0].name") { value("Robert Martin") }
+        }.andReturn().response.contentAsString
+
+        val id = objectMapper.readTree(response)["id"].asLong()
+
+        mockMvc.get("/books/$id").andExpect {
+            status { isOk() }
+            jsonPath("$.authors.length()") { value(1) }
+            jsonPath("$.authors[0].name") { value("Robert Martin") }
+        }
+    }
+
+    @Test
+    fun `PUT books with authorIds - updates linked authors`() {
+        val author1 = savedAuthor("Author One")
+        val author2 = savedAuthor("Author Two")
+        val book = savedBook()
+
+        mockMvc.put("/books/${book.id}") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"title":"New Title","author":"Authors","isbn":"978-0-000000-00-0","price":9.99,"authorIds":[${author1.id},${author2.id}]}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.authors.length()") { value(2) }
         }
     }
 
@@ -86,6 +134,7 @@ class BooksIntegrationTest {
             jsonPath("$.id") { value(book.id) }
             jsonPath("$.title") { value("Test Book") }
             jsonPath("$.author") { value("Author") }
+            jsonPath("$.authors") { isArray() }
         }
     }
 

@@ -1,23 +1,33 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { createBook } from '../api/books'
+import { booksApi, authorsApi } from '../api/index'
 import BookForm from '../components/BookForm.vue'
 import type { NewBook } from '../types/book'
+import type { AuthorSummary } from '../types/author'
 
 const router = useRouter()
 
-const form = ref<NewBook>({ title: '', author: '', isbn: '', price: 0, publisher: '' })
+const form = ref<NewBook>({ title: '', author: '', isbn: '', price: 0, publisher: '', authorIds: [] })
+const availableAuthors = ref<AuthorSummary[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+onMounted(async () => {
+  try {
+    const page = await authorsApi.getAuthors({ page: 0, size: 200 })
+    availableAuthors.value = page.content.map((a) => ({ id: a.id, name: a.name }))
+  } catch {
+    // author list is optional — silently ignore
+  }
+})
 
 async function handleSubmit() {
   loading.value = true
   error.value = null
   try {
-    const book = await createBook({
-      ...form.value,
-      publisher: form.value.publisher || undefined,
+    const book = await booksApi.createBook({
+      newBook: { ...form.value, publisher: form.value.publisher || undefined },
     })
     router.push({ name: 'book-detail', params: { id: book.id } })
   } catch (e) {
@@ -29,7 +39,7 @@ async function handleSubmit() {
 
 <template>
   <div class="back-link">
-    <RouterLink to="/books">← Back to list</RouterLink>
+    <RouterLink to="/books">← Back to books</RouterLink>
   </div>
 
   <div class="create-card">
@@ -40,6 +50,7 @@ async function handleSubmit() {
     <BookForm
       v-model="form"
       :loading="loading"
+      :available-authors="availableAuthors"
       submit-label="Create Book"
       @submit="handleSubmit"
     >

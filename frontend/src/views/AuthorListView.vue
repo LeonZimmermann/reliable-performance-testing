@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { booksApi } from '../api/index'
+import { authorsApi } from '../api/index'
 import Pagination from '../components/Pagination.vue'
-import type { Book, BookPage } from '../types/book'
+import type { Author, AuthorPage } from '../types/author'
 
 const router = useRouter()
 const route = useRoute()
 
 const page = ref(Number(route.query.page) || 0)
 const pageSize = 10
-const result = ref<BookPage | null>(null)
+const result = ref<AuthorPage | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const deletingId = ref<number | null>(null)
@@ -19,26 +19,25 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    result.value = await booksApi.getBooks({ page: page.value, size: pageSize })
-    // If deleted last item on page, go back one page
+    result.value = await authorsApi.getAuthors({ page: page.value, size: pageSize })
     if (result.value.content.length === 0 && page.value > 0) {
       page.value--
     }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load books'
+    error.value = e instanceof Error ? e.message : 'Failed to load authors'
   } finally {
     loading.value = false
   }
 }
 
-async function handleDelete(book: Book) {
-  if (!confirm(`Delete "${book.title}"?`)) return
-  deletingId.value = book.id
+async function handleDelete(author: Author) {
+  if (!confirm(`Delete "${author.name}"?`)) return
+  deletingId.value = author.id
   try {
-    await booksApi.deleteBook({ id: book.id })
+    await authorsApi.deleteAuthor({ id: author.id })
     await load()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to delete book'
+    error.value = e instanceof Error ? e.message : 'Failed to delete author'
   } finally {
     deletingId.value = null
   }
@@ -55,7 +54,7 @@ onMounted(load)
 
 <template>
   <div class="page-header">
-    <h1>Books</h1>
+    <h1>Authors</h1>
   </div>
 
   <div v-if="error" class="error-banner">{{ error }}</div>
@@ -64,47 +63,46 @@ onMounted(load)
 
   <template v-else-if="result">
     <div v-if="result.content.length === 0" class="empty">
-      No books yet.
-      <RouterLink to="/books/create">Add the first one.</RouterLink>
+      No authors yet.
+      <RouterLink to="/authors/create">Add the first one.</RouterLink>
     </div>
 
     <div v-else class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Author</th>
-            <th>ISBN</th>
-            <th class="col-price">Price</th>
-            <th>Publisher</th>
+            <th>Name</th>
+            <th>Birthdate</th>
+            <th>Origin</th>
             <th class="col-actions"></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="book in result.content" :key="book.id">
+          <tr v-for="author in result.content" :key="author.id">
             <td>
-              <RouterLink :to="{ name: 'book-detail', params: { id: book.id } }" class="book-link">
-                {{ book.title }}
+              <RouterLink
+                :to="{ name: 'author-detail', params: { id: author.id } }"
+                class="author-link"
+              >
+                {{ author.name }}
               </RouterLink>
             </td>
-            <td>{{ book.author }}</td>
-            <td class="isbn">{{ book.isbn }}</td>
-            <td class="col-price">€ {{ book.price.toFixed(2) }}</td>
-            <td class="muted">{{ book.publisher ?? '—' }}</td>
+            <td class="muted">{{ author.birthdate ?? '—' }}</td>
+            <td class="muted">{{ author.origin ?? '—' }}</td>
             <td class="col-actions">
               <div class="row-actions">
                 <RouterLink
-                  :to="{ name: 'book-detail', params: { id: book.id } }"
+                  :to="{ name: 'author-detail', params: { id: author.id } }"
                   class="btn btn-secondary btn-sm"
                 >
                   View
                 </RouterLink>
                 <button
                   class="btn btn-danger btn-sm"
-                  :disabled="deletingId === book.id"
-                  @click="handleDelete(book)"
+                  :disabled="deletingId === author.id"
+                  @click="handleDelete(author)"
                 >
-                  {{ deletingId === book.id ? '…' : 'Delete' }}
+                  {{ deletingId === author.id ? '…' : 'Delete' }}
                 </button>
               </div>
             </td>
@@ -191,29 +189,19 @@ td {
   vertical-align: middle;
 }
 
-.book-link {
+.author-link {
   color: var(--color-primary);
   text-decoration: none;
   font-weight: 500;
 }
 
-.book-link:hover {
+.author-link:hover {
   text-decoration: underline;
-}
-
-.isbn {
-  font-family: monospace;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
 }
 
 .muted {
   color: var(--color-text-muted);
-}
-
-.col-price {
-  text-align: right;
-  white-space: nowrap;
+  font-size: 0.875rem;
 }
 
 .col-actions {

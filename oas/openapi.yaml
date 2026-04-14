@@ -111,6 +111,111 @@ paths:
           description: No Content
         '404':
           description: Not Found
+  /authors:
+    get:
+      tags: [Authors]
+      operationId: getAuthors
+      summary: Get all authors (paginated)
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 0
+          required: false
+        - in: query
+          name: size
+          schema:
+            type: integer
+            default: 20
+          required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorPage'
+    post:
+      tags: [Authors]
+      operationId: createAuthor
+      summary: Create a new author
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewAuthor'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+  /authors/{id}:
+    get:
+      tags: [Authors]
+      operationId: getAuthorById
+      summary: Get an author by ID
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '404':
+          description: Not Found
+    put:
+      tags: [Authors]
+      operationId: updateAuthor
+      summary: Update an author
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewAuthor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '404':
+          description: Not Found
+    delete:
+      tags: [Authors]
+      operationId: deleteAuthor
+      summary: Delete an author
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
 components:
   schemas:
     NewBook:
@@ -127,6 +232,11 @@ components:
           format: double
         publisher:
           type: string
+        authorIds:
+          type: array
+          items:
+            type: integer
+            format: int64
       required: [title, author, isbn, price]
     Book:
       allOf:
@@ -136,7 +246,11 @@ components:
             id:
               type: integer
               format: int64
-          required: [id]
+            authors:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuthorSummary'
+          required: [id, authors]
     BookPage:
       type: object
       properties:
@@ -144,6 +258,54 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Book'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+      required: [content, totalElements, totalPages, size, number]
+    NewAuthor:
+      type: object
+      properties:
+        name:
+          type: string
+        birthdate:
+          type: string
+          format: date
+        origin:
+          type: string
+        biography:
+          type: string
+      required: [name]
+    Author:
+      allOf:
+        - $ref: '#/components/schemas/NewAuthor'
+        - type: object
+          properties:
+            id:
+              type: integer
+              format: int64
+          required: [id]
+    AuthorSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+      required: [id, name]
+    AuthorPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
         totalElements:
           type: integer
           format: int64

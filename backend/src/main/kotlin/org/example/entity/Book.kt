@@ -23,4 +23,12 @@ data class Book(
 
     @Column
     val publisher: String? = null
-)
+) {
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "book_authors",
+        joinColumns = [JoinColumn(name = "book_id")],
+        inverseJoinColumns = [JoinColumn(name = "author_id")]
+    )
+    var authors: MutableSet<Author> = mutableSetOf()
+}

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { NewBook } from '../types/book'
+import type { AuthorSummary } from '../types/author'
 
 const props = defineProps<{
   modelValue: NewBook
   loading: boolean
   submitLabel: string
+  availableAuthors?: AuthorSummary[]
 }>()
 
 const emit = defineEmits<{
@@ -12,8 +14,20 @@ const emit = defineEmits<{
   'submit': []
 }>()
 
-function update(field: keyof NewBook, value: string | number) {
+function update(field: keyof NewBook, value: string | number | number[]) {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
+}
+
+function toggleAuthor(authorId: number) {
+  const current = props.modelValue.authorIds ?? []
+  const next = current.includes(authorId)
+    ? current.filter((id) => id !== authorId)
+    : [...current, authorId]
+  emit('update:modelValue', { ...props.modelValue, authorIds: next })
+}
+
+function isChecked(authorId: number): boolean {
+  return (props.modelValue.authorIds ?? []).includes(authorId)
 }
 </script>
 
@@ -32,7 +46,7 @@ function update(field: keyof NewBook, value: string | number) {
     </div>
 
     <div class="field">
-      <label for="author">Author *</label>
+      <label for="author">Author (text) *</label>
       <input
         id="author"
         type="text"
@@ -80,6 +94,24 @@ function update(field: keyof NewBook, value: string | number) {
       />
     </div>
 
+    <div v-if="availableAuthors && availableAuthors.length > 0" class="field">
+      <label>Linked Authors</label>
+      <div class="author-list">
+        <label
+          v-for="a in availableAuthors"
+          :key="a.id"
+          class="author-check"
+        >
+          <input
+            type="checkbox"
+            :checked="isChecked(a.id)"
+            @change="toggleAuthor(a.id)"
+          />
+          {{ a.name }}
+        </label>
+      </div>
+    </div>
+
     <div class="form-actions">
       <slot name="actions" />
       <button type="submit" class="btn btn-primary" :disabled="loading">
@@ -109,7 +141,8 @@ label {
   color: var(--color-text);
 }
 
-input {
+input[type="text"],
+input[type="number"] {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -120,10 +153,37 @@ input {
   width: 100%;
 }
 
-input:focus {
+input[type="text"]:focus,
+input[type="number"]:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.author-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.625rem 0.75rem;
+  background: var(--color-bg);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.author-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.author-check input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
 }
 
 .form-actions {
