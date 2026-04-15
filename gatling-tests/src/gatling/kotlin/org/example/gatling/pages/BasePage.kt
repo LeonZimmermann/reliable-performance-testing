@@ -2,7 +2,7 @@ package org.example.gatling.pages
 
 import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.http.HttpDsl.*
-import org.example.gatling.scenarios.Constants
+import org.example.gatling.utils.Constants
 
 /**
  * Base class for all page objects.
