@@ -12,7 +12,8 @@
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(npm test:*)",
-      "Bash(./gradlew :backend:test)"
+      "Bash(./gradlew :backend:test)",
+      "Bash(./gradlew :gatling-tests-scala:openApiGenerate)"
     ]
   }
 }
