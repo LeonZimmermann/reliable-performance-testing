@@ -35,17 +35,10 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Start backend
-        run: docker compose up -d --build
-
-      - name: Wait for backend to be ready
-        run: |
-          echo "Waiting for backend on http://localhost:8080 ..."
-          timeout 120 bash -c 'until curl -sf http://localhost:8080/books > /dev/null; do
-            echo "  not ready yet, retrying in 3s"
-            sleep 3
-          done'
-          echo "Backend is ready"
+      - name: Start backend and wait for healthy
+        # --wait blocks until the healthcheck on /actuator/health reports UP
+        # healthcheck: 12 retries × 10s interval + 30s start_period = up to 150s
+        run: docker compose up -d --build --wait
 
       - name: Run Gatling simulation
         env:
