@@ -9,7 +9,7 @@ import io.gatling.javaapi.http.HttpDsl.*
  */
 abstract class BasePage {
 
-    protected val baseUrl: String = System.getenv("GATLING_BASE_URL") ?: "http://localhost:8080"
+    protected val baseUrl: String = System.getProperty("baseUrl", "http://localhost:8080")
 
     /**
      * Helper method to create a named check for status code

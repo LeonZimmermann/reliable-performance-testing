@@ -5,7 +5,7 @@ import io.gatling.javaapi.http.HttpDsl.http
 
 object Constants {
     val HTTP_PROTOCOL = http
-        .baseUrl(System.getenv("GATLING_BASE_URL") ?: "http://localhost:8080")
+        .baseUrl(System.getProperty("baseUrl", "http://localhost:8080"))
         .acceptHeader("application/json")
         .contentTypeHeader("application/json")
 

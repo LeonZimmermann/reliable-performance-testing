@@ -41,11 +41,10 @@ jobs:
         run: docker compose up -d --build --wait
 
       - name: Run Gatling simulation
-        env:
-          GATLING_BASE_URL: http://localhost:8080
         run: |
           ./gradlew \
             :gatling-tests:gatlingRun-org.example.gatling.scenarios.${{ github.event.inputs.simulation }} \
+            -PbaseUrl=http://localhost:8080 \
             --no-daemon
 
       - name: Upload Gatling report
