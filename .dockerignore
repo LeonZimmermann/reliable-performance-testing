@@ -1,0 +1,21 @@
+# Version control
+.git/
+.gitignore
+
+# Build outputs (the Docker build runs its own)
+**/build/
+**/.gradle/
+
+# Frontend (not part of the backend image)
+frontend/
+
+# Gatling test sources (not needed at runtime)
+gatling-tests/src/
+
+# IDE and OS artifacts
+.idea/
+*.iml
+.DS_Store
+
+# Documentation
+*.md
