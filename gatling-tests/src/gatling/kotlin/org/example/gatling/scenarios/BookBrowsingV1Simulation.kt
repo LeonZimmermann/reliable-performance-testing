@@ -4,12 +4,13 @@ import io.gatling.javaapi.core.CoreDsl.rampUsers
 import io.gatling.javaapi.core.CoreDsl.scenario
 import io.gatling.javaapi.core.Simulation
 import org.example.gatling.behaviours.UserBehaviour.browseBooksV1
+import org.example.gatling.behaviours.UserBehaviour.createManyBooks
 import org.example.gatling.utils.Constants.HIGH_NUMBER_OF_USERS
 import org.example.gatling.utils.Constants.HTTP_PROTOCOL
 import org.example.gatling.utils.Constants.LOW_RESPONSE_TIME
 import org.example.gatling.utils.seconds
 
-class BookBrowsingV1Simulation : Simulation() {
+object BookBrowsingV1Simulation : Simulation() {
 
     private val browse = scenario("Browse Books V1")
         .exec(browseBooksV1())

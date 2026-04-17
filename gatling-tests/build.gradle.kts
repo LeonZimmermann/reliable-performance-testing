@@ -39,8 +39,8 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
 
     // Gatling
-    gatling("io.gatling.highcharts:gatling-charts-highcharts:3.11.5")
-    gatling("io.gatling:gatling-app:3.11.5")
+    gatling("io.gatling.highcharts:gatling-charts-highcharts:3.15.0")
+    gatling("io.gatling:gatling-app:3.15.0")
 
     // Generated client dependencies
     implementation("com.google.code.findbugs:jsr305:3.0.2")
@@ -58,6 +58,11 @@ val baseUrl: String = project.findProperty("baseUrl")?.toString()
     ?: "http://localhost:8080"
 
 gatling {
-    jvmArgs = listOf("-DbaseUrl=$baseUrl")
+    jvmArgs = listOf(
+        "-DbaseUrl=$baseUrl",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED"
+    )
     // logLevel = "WARN"
 }

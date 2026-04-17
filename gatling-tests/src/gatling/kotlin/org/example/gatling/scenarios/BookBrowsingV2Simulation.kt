@@ -9,7 +9,7 @@ import org.example.gatling.utils.Constants.HTTP_PROTOCOL
 import org.example.gatling.utils.Constants.LOW_RESPONSE_TIME
 import org.example.gatling.utils.seconds
 
-class BookBrowsingV2Simulation : Simulation() {
+object BookBrowsingV2Simulation : Simulation() {
 
     private val browse = scenario("Browse Books V2")
         .exec(browseBooksV2())
