@@ -1,4 +1,4 @@
-name: Load Test
+name: Load Test (Azure)
 
 # Required secrets:
 #   AZURE_CREDENTIALS     – service principal JSON ({ clientId, clientSecret, subscriptionId, tenantId })
@@ -91,30 +91,11 @@ jobs:
             --output tsv)
           echo "base_url=http://$FQDN:8080" >> $GITHUB_OUTPUT
 
-      - name: Wait for backend to be ready
-        run: |
-          URL="${{ steps.aci.outputs.base_url }}/actuator/health"
-          echo "Polling $URL ..."
-          timeout 180 bash -c "until curl -sf '$URL' > /dev/null; do
-            echo '  not ready, retrying in 5s'
-            sleep 5
-          done"
-          echo "Backend is ready"
-
-      - name: Run Gatling simulation
-        run: |
-          ./gradlew \
-            :gatling-tests:gatlingRun-org.example.gatling.scenarios.${{ github.event.inputs.simulation }} \
-            -PbaseUrl=${{ steps.aci.outputs.base_url }} \
-            --no-daemon
-
-      - name: Upload Gatling report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Run Gatling tests
+        uses: ./.github/actions/run-gatling
         with:
-          name: gatling-report-${{ github.event.inputs.simulation }}-${{ github.run_number }}
-          path: gatling-tests/build/reports/gatling/
-          retention-days: 30
+          base_url: ${{ steps.aci.outputs.base_url }}
+          simulation: ${{ github.event.inputs.simulation }}
 
       - name: Delete container instance
         if: always()

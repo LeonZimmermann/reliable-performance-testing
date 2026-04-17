@@ -1,0 +1,48 @@
+name: Run Gatling Tests
+description: Seeds data with CreateOneMillionBooksSimulation, then runs the chosen BookBrowsing simulation.
+
+inputs:
+  base_url:
+    description: Base URL of the backend under test
+    required: true
+  simulation:
+    description: Gatling simulation class name (without package prefix)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Wait for backend to be ready
+      shell: bash
+      run: |
+        URL="${{ inputs.base_url }}/actuator/health"
+        echo "Polling $URL ..."
+        timeout 180 bash -c "until curl -sf '$URL' > /dev/null; do
+          echo '  not ready, retrying in 5s'
+          sleep 5
+        done"
+        echo "Backend is ready"
+
+    - name: Seed - CreateOneMillionBooksSimulation
+      shell: bash
+      run: |
+        ./gradlew \
+          :gatling-tests:gatlingRun-org.example.gatling.scenarios.CreateOneMillionBooksSimulation \
+          -PbaseUrl=${{ inputs.base_url }} \
+          --no-daemon
+
+    - name: Run ${{ inputs.simulation }}
+      shell: bash
+      run: |
+        ./gradlew \
+          :gatling-tests:gatlingRun-org.example.gatling.scenarios.${{ inputs.simulation }} \
+          -PbaseUrl=${{ inputs.base_url }} \
+          --no-daemon
+
+    - name: Upload Gatling reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gatling-reports-${{ inputs.simulation }}-${{ github.run_number }}
+        path: gatling-tests/build/reports/gatling/
+        retention-days: 30
