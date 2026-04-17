@@ -2,7 +2,8 @@
   <nav>
     <span class="nav-brand">OAS Demo</span>
     <div class="nav-links">
-      <RouterLink to="/books">Books</RouterLink>
+      <RouterLink to="/books/v1">Books v1</RouterLink>
+      <RouterLink to="/books">Books v2</RouterLink>
       <RouterLink to="/authors">Authors</RouterLink>
       <RouterLink to="/books/create" class="btn btn-primary btn-sm">+ New Book</RouterLink>
       <RouterLink to="/authors/create" class="btn btn-secondary btn-sm">+ New Author</RouterLink>

@@ -6,6 +6,20 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /v1/books:
+    get:
+      tags: [Books]
+      operationId: getAllBooks
+      summary: Get all books (no pagination)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
   /books:
     get:
       tags: [Books]

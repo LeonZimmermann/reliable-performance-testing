@@ -33,6 +33,9 @@ class BooksService(
     }
 
     @Transactional(readOnly = true)
+    fun getAllBooks(): List<Book> = bookRepository.findAll().map { it.toModel() }
+
+    @Transactional(readOnly = true)
     fun getBooks(page: Int, size: Int): BookPage {
         val result = bookRepository.findAll(PageRequest.of(page, size))
         return BookPage(

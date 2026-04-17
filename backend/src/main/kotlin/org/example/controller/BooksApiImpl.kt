@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class BooksApiImpl(private val booksService: BooksService) : BooksApi {
 
+    override fun getAllBooks(): ResponseEntity<List<Book>> =
+        ResponseEntity.ok(booksService.getAllBooks())
+
     override fun createBook(newBook: NewBook): ResponseEntity<Book> =
         ResponseEntity.status(HttpStatus.CREATED).body(booksService.createBook(newBook))
 
