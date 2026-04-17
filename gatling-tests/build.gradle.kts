@@ -3,7 +3,7 @@ plugins {
     id("io.gatling.gradle") version "3.11.5.2"
 }
 
-group = "org.example"
+group = "dev.leon.zimmermann.rpt"
 version = "1.0-SNAPSHOT"
 
 java {
@@ -19,7 +19,7 @@ repositories {
 val generateGatlingPages = tasks.register<GenerateGatlingPagesTask>("generateGatlingPages") {
     specFile.set(file("../oas/openapi.yaml"))
     outputDir.set(layout.buildDirectory.dir("generated/gatling/kotlin"))
-    packageName.set("org.example.gatling.pages")
+    packageName.set("dev.leon.zimmermann.rpt.gatling.pages")
 }
 
 sourceSets {

@@ -4,7 +4,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.6" apply false
 }
 
-group = "org.example"
+group = "dev.leon.zimmermann.rpt"
 version = "1.0-SNAPSHOT"
 
 allprojects {

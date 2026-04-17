@@ -27,7 +27,7 @@ runs:
       shell: bash
       run: |
         ./gradlew \
-          :gatling-tests:gatlingRun-org.example.gatling.scenarios.CreateOneMillionBooksSimulation \
+          :gatling-tests:gatlingRun-dev.leon.zimmermann.rpt.gatling.scenarios.CreateOneMillionBooksSimulation \
           -PbaseUrl=${{ inputs.base_url }} \
           --no-daemon
 
@@ -35,7 +35,7 @@ runs:
       shell: bash
       run: |
         ./gradlew \
-          :gatling-tests:gatlingRun-org.example.gatling.scenarios.${{ inputs.simulation }} \
+          :gatling-tests:gatlingRun-dev.leon.zimmermann.rpt.gatling.scenarios.${{ inputs.simulation }} \
           -PbaseUrl=${{ inputs.base_url }} \
           --no-daemon
 

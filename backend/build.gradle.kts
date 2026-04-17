@@ -7,7 +7,7 @@ plugins {
     id("org.openapi.generator") version "7.4.0"
 }
 
-group = "org.example"
+group = "dev.leon.zimmermann.rpt"
 version = "1.0-SNAPSHOT"
 
 java {
@@ -43,9 +43,9 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     generatorName.set("kotlin-spring")
     inputSpec.set(project.layout.projectDirectory.file("../oas/openapi.yaml").asFile.absolutePath)
     outputDir.set(layout.buildDirectory.dir("generated/sources/openapi").get().asFile.absolutePath)
-    apiPackage.set("org.example.generated.api")
-    modelPackage.set("org.example.generated.model")
-    invokerPackage.set("org.example.generated.invoker")
+    apiPackage.set("dev.leon.zimmermann.rpt.generated.api")
+    modelPackage.set("dev.leon.zimmermann.rpt.generated.model")
+    invokerPackage.set("dev.leon.zimmermann.rpt.generated.invoker")
     configOptions.set(
         mapOf(
             "interfaceOnly" to "true",

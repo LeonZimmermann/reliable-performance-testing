@@ -7,13 +7,17 @@
       "Bash(xargs ls:*)",
       "Bash(./gradlew :backend:test --info)",
       "Bash(find:*)",
-      "Bash(./gradlew :backend:test --rerun-tasks --tests \"org.example.BooksIntegrationTest\")",
+      "Bash(./gradlew :backend:test --rerun-tasks --tests \"dev.leon.zimmermann.rpt.BooksIntegrationTest\")",
       "Bash(./gradlew :backend:test --rerun-tasks)",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(npm test:*)",
       "Bash(./gradlew :backend:test)",
-      "Bash(./gradlew :gatling-tests-scala:openApiGenerate)"
+      "Bash(./gradlew :gatling-tests-scala:openApiGenerate)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(grep -r \"package org\\\\.example\" /c/Users/leonz/Documents/Projekte/OASDemo --include=\"*.kt\" ! -path \"*/node_modules/*\" ! -path \"*/.gradle/*\" ! -path \"*/build/*\")",
+      "Bash(grep -rn 'org\\\\.example' '--include=*.kt' '--include=*.kts' '--include=*.yml' '--include=*.yaml' ! -path '*/build/*' ! -path '*/frontend/*' ! -path '*/.idea/*' .)"
     ]
   }
 }
