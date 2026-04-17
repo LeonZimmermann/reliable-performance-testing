@@ -21,6 +21,7 @@ repositories { mavenCentral() }
 dependencies {
     implementation(platform("org.springframework.boot:spring-boot-dependencies:3.3.5"))
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")

@@ -2,6 +2,7 @@ package org.example.gatling.pages
 
 import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.http.HttpDsl.*
+import org.example.gatling.utils.Constants
 
 /**
  * Base class for all page objects.
@@ -9,7 +10,7 @@ import io.gatling.javaapi.http.HttpDsl.*
  */
 abstract class BasePage {
 
-    protected val baseUrl: String = "http://localhost:8080"
+    protected val baseUrl: String = Constants.BASE_URL
 
     /**
      * Helper method to create a named check for status code

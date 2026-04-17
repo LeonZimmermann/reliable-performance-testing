@@ -53,11 +53,11 @@ dependencies {
     implementation("io.swagger.core.v3:swagger-annotations:2.2.20")
 }
 
-gatling {
-    // logLevel = "WARN"
+val baseUrl: String = project.findProperty("baseUrl")?.toString()
+    ?: System.getenv("GATLING_BASE_URL")
+    ?: "http://localhost:8080"
 
-    // Enterprise configuration (optional)
-    // enterprise.closureOf<Any> {
-    //     enabled = false
-    // }
+gatling {
+    jvmArgs = listOf("-DbaseUrl=$baseUrl")
+    // logLevel = "WARN"
 }
