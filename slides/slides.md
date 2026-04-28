@@ -1,12 +1,11 @@
 ---
 theme: default
-title: Reliable Performance Testing with Gatling
-highlighter: shiki
-lineNumbers: false
+title: Stop praying, start testing - reliable performance testing with gatling
+class: text-center
 drawings:
   persist: false
-transition: slide-left
 mdc: true
+duration: 45min
 ---
 
 # Stop praying, start testing
@@ -23,6 +22,19 @@ mdc: true
 - How to model your tests correctly 
 - How to implement CI
 - How to solve common problems in performance testing
+
+---
+
+# When and why performance testing matters
+
+- An application with poor performance slows down the user and also the developers
+- Poor performance leads to longer development times because manual and automated tests take longer
+- ISO 9241-11
+  - Effektivität
+  - Effizienz
+  - Zufriedenstellung
+- https://arxiv.org/abs/2408.12736
+- https://www.sciencedirect.com/science/article/abs/pii/S0164121207000088
 
 ---
 
