@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authorsApi, ResponseError } from '../api/index'
+import { auth } from '../main'
 import AuthorForm from '../components/AuthorForm.vue'
 import type { Author, NewAuthor } from '../types/author'
 
@@ -91,7 +92,7 @@ async function handleDelete() {
           <h1>{{ author.name }}</h1>
           <p v-if="author.origin" class="subtitle">{{ author.origin }}</p>
         </div>
-        <div class="header-actions" v-if="!editing">
+        <div class="header-actions" v-if="!editing && auth.isAdmin">
           <button class="btn btn-secondary" @click="startEdit">Edit</button>
           <button class="btn btn-danger" :disabled="deleting" @click="handleDelete">
             {{ deleting ? 'Deleting…' : 'Delete' }}

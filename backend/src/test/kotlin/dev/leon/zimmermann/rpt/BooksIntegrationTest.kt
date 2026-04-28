@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
+import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
@@ -39,6 +40,7 @@ class BooksIntegrationTest {
         authorRepository.save(Author(name = name))
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `POST books - creates a book and returns 201`() {
         mockMvc.post("/books") {
             contentType = MediaType.APPLICATION_JSON
@@ -55,6 +57,7 @@ class BooksIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `POST books with authorIds - links authors to book`() {
         val author = savedAuthor("Robert Martin")
 
@@ -78,6 +81,7 @@ class BooksIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `PUT books with authorIds - updates linked authors`() {
         val author1 = savedAuthor("Author One")
         val author2 = savedAuthor("Author Two")
@@ -146,6 +150,7 @@ class BooksIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `PUT books - updates a book and returns 200`() {
         val book = savedBook()
 
@@ -163,6 +168,7 @@ class BooksIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `PUT books - returns 404 when not found`() {
         mockMvc.put("/books/99999") {
             contentType = MediaType.APPLICATION_JSON
@@ -173,6 +179,7 @@ class BooksIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `DELETE books - deletes a book and returns 204`() {
         val book = savedBook()
 
@@ -186,6 +193,7 @@ class BooksIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `DELETE books - returns 404 when not found`() {
         mockMvc.delete("/books/99999").andExpect {
             status { isNotFound() }

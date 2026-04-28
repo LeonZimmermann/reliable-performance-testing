@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
+import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
@@ -33,6 +34,7 @@ class AuthorsIntegrationTest {
         authorRepository.save(Author(name = name, origin = "Russia", biography = "Famous Russian novelist"))
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `POST authors - creates an author with all fields and returns 201`() {
         mockMvc.post("/authors") {
             contentType = MediaType.APPLICATION_JSON
@@ -48,6 +50,7 @@ class AuthorsIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `POST authors - creates an author with only required fields and returns 201`() {
         mockMvc.post("/authors") {
             contentType = MediaType.APPLICATION_JSON
@@ -112,6 +115,7 @@ class AuthorsIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `PUT authors - updates an author and returns 200`() {
         val author = savedAuthor()
 
@@ -129,6 +133,7 @@ class AuthorsIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `PUT authors - returns 404 when not found`() {
         mockMvc.put("/authors/99999") {
             contentType = MediaType.APPLICATION_JSON
@@ -139,6 +144,7 @@ class AuthorsIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `DELETE authors - deletes an author and returns 204`() {
         val author = savedAuthor()
 
@@ -152,6 +158,7 @@ class AuthorsIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = ["admin"])
     fun `DELETE authors - returns 404 when not found`() {
         mockMvc.delete("/authors/99999").andExpect {
             status { isNotFound() }

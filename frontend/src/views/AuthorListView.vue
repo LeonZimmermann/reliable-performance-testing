@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authorsApi } from '../api/index'
+import { auth } from '../main'
 import Pagination from '../components/Pagination.vue'
 import type { Author, AuthorPage } from '../types/author'
 
@@ -98,6 +99,7 @@ onMounted(load)
                   View
                 </RouterLink>
                 <button
+                  v-if="auth.isAdmin"
                   class="btn btn-danger btn-sm"
                   :disabled="deletingId === author.id"
                   @click="handleDelete(author)"

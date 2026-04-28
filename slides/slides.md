@@ -87,16 +87,8 @@ object FirstSimulation : Simulation() {
 # How Gatlings session works
 
 - essentially a map storing data that can be used in requests
-- Write: check(jsonPath().saveAs()) / set inside of exec
-- Read: "#{}" / get inside of exec
-
----
-
-# Make it maintainable
-
-- extract Http Calls using the Page-Object pattern
-    - Create a class for each controller in your backend that simulates its endpoints
-- Generate page objects automatically from OpenAPI spec
+- Write: `check(jsonPath().saveAs()) / set inside of exec`
+- Read: `"#{}"` / `get` inside of exec
 
 ---
 
@@ -105,6 +97,17 @@ object FirstSimulation : Simulation() {
 - Extract getBooks() into separate page object
 - Define response time assertions as a constant
 - Define load sizes as constants
+
+---
+
+# Make the repo maintainable
+
+- extract Http Calls using the Page-Object pattern
+    - Create a class for each controller in your backend that simulates its endpoints
+- Generate page objects automatically from OpenAPI spec
+  - Generate OAS Schema by backend or do spec first
+  - Tell an AI agent to write page objects accordingly or tell AI to write a gradle task which automatically converts the code
+  - Prompt: TODO
 
 ---
 

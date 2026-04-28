@@ -6,12 +6,34 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Override any application.properties values here, e.g.:
-      # SPRING_PROFILES_ACTIVE: prod
       JAVA_OPTS: ""
+      # Point to keycloak service name inside Docker; issuer-uri uses localhost so tokens validate correctly
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8180/realms/bookstore/protocol/openid-connect/certs
+    depends_on:
+      keycloak:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.0
+    command: start-dev --import-realm
+    ports:
+      - "8180:8180"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: "8180"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s

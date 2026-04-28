@@ -1,3 +1,7 @@
+<script setup lang="ts">
+import { keycloak, auth } from './main'
+</script>
+
 <template>
   <nav>
     <span class="nav-brand">OAS Demo</span>
@@ -5,8 +9,13 @@
       <RouterLink to="/books/v1">Books v1</RouterLink>
       <RouterLink to="/books">Books v2</RouterLink>
       <RouterLink to="/authors">Authors</RouterLink>
-      <RouterLink to="/books/create" class="btn btn-primary btn-sm">+ New Book</RouterLink>
-      <RouterLink to="/authors/create" class="btn btn-secondary btn-sm">+ New Author</RouterLink>
+      <template v-if="auth.isAdmin">
+        <RouterLink to="/books/create" class="btn btn-primary btn-sm">+ New Book</RouterLink>
+        <RouterLink to="/authors/create" class="btn btn-secondary btn-sm">+ New Author</RouterLink>
+      </template>
+      <span v-if="auth.authenticated" class="nav-user">{{ auth.username }}</span>
+      <button v-if="auth.authenticated" class="btn btn-secondary btn-sm" @click="keycloak.logout({ redirectUri: location.origin })">Logout</button>
+      <button v-else class="btn btn-primary btn-sm" @click="keycloak.login()">Login</button>
     </div>
   </nav>
   <main>
@@ -141,6 +150,11 @@ main {
 .btn-sm {
   padding: 0.35rem 0.75rem;
   font-size: 0.8125rem;
+}
+
+.nav-user {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
 }
 
 .error-banner {

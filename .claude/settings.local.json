@@ -19,7 +19,9 @@
       "Bash(grep -r \"package org\\\\.example\" /c/Users/leonz/Documents/Projekte/OASDemo --include=\"*.kt\" ! -path \"*/node_modules/*\" ! -path \"*/.gradle/*\" ! -path \"*/build/*\")",
       "Bash(grep -rn 'org\\\\.example' '--include=*.kt' '--include=*.kts' '--include=*.yml' '--include=*.yaml' ! -path '*/build/*' ! -path '*/frontend/*' ! -path '*/.idea/*' .)",
       "Bash(git commit *)",
-      "Bash(git update-index *)"
+      "Bash(git update-index *)",
+      "Bash(xargs wc *)",
+      "Bash(xargs grep *)"
     ]
   }
 }
