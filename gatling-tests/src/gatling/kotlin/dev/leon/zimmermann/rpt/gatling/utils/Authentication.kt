@@ -3,24 +3,25 @@ package dev.leon.zimmermann.rpt.gatling.utils
 import io.gatling.javaapi.core.ChainBuilder
 import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.http.HttpDsl.*
+import dev.leon.zimmermann.rpt.gatling.config.AuthenticationConfig
 
-object KeycloakAuth {
+object Authentication {
 
-    private val KEYCLOAK_URL = System.getProperty("keycloakUrl", "http://localhost:8180")
-    private val REALM = System.getProperty("keycloakRealm", "bookstore")
-    private val CLIENT_ID = System.getProperty("keycloakClientId", "bookstore-frontend")
-    private val TOKEN_URL = "$KEYCLOAK_URL/realms/$REALM/protocol/openid-connect/token"
+    private val TOKEN_URL = AuthenticationConfig.tokenUrl
 
     // Refresh when less than 30 seconds remain on the current token
     private const val REFRESH_BUFFER_MS = 30_000L
 
-    fun fetchToken(username: String = "admin", password: String = "admin"): ChainBuilder =
+    fun fetchToken(
+        username: String = AuthenticationConfig.username,
+        password: String = AuthenticationConfig.password,
+    ): ChainBuilder =
         exec(
             http("Fetch Token")
                 .post(TOKEN_URL)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .formParam("grant_type", "password")
-                .formParam("client_id", CLIENT_ID)
+                .formParam("client_id", AuthenticationConfig.clientId)
                 .formParam("username", username)
                 .formParam("password", password)
                 .check(
@@ -39,7 +40,7 @@ object KeycloakAuth {
                 .post(TOKEN_URL)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .formParam("grant_type", "refresh_token")
-                .formParam("client_id", CLIENT_ID)
+                .formParam("client_id", AuthenticationConfig.clientId)
                 .formParam("refresh_token", "#{refreshToken}")
                 .check(
                     status().`is`(200),

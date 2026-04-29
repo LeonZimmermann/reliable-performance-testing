@@ -2,9 +2,10 @@ package dev.leon.zimmermann.rpt.gatling.utils
 
 import io.gatling.javaapi.core.CoreDsl
 import io.gatling.javaapi.http.HttpDsl
+import dev.leon.zimmermann.rpt.gatling.config.BackendConfig
 
 object Constants {
-    val BASE_URL: String = System.getProperty("baseUrl", "http://localhost:8080")
+    val BASE_URL: String = BackendConfig.baseUrl
 
     val HTTP_PROTOCOL = HttpDsl.http
         .baseUrl(BASE_URL)
