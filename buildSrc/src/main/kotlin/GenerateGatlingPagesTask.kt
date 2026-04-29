@@ -220,6 +220,7 @@ private object KotlinPageEmitter {
         "io.gatling.javaapi.core.ChainBuilder",
         "io.gatling.javaapi.core.CoreDsl.*",
         "io.gatling.javaapi.http.HttpDsl.*",
+        "dev.leon.zimmermann.rpt.gatling.utils.KeycloakAuth",
     )
 
     // ── Target language / framework identifiers ───────────────────────────────
@@ -317,18 +318,19 @@ private object KotlinPageEmitter {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private fun StringBuilder.appendExecWithChecks(op: PageOperation) {
-        appendLine("        return exec(req")
-        appendLine("            .check(statusIs(${op.successStatus}))")
+        appendLine("        return exec(KeycloakAuth.ensureValidToken)")
+        appendLine("            .exec(req")
+        appendLine("                .check(statusIs(${op.successStatus}))")
         when (val r = op.response) {
             is ResponseSpec.None -> {}
             is ResponseSpec.ArrayBody ->
-                appendLine("            .check(jsonPath(\"$DOLLAR[*]\").ofList().saveAs(\"${r.sessionKey}\"))")
+                appendLine("                .check(jsonPath(\"$DOLLAR[*]\").ofList().saveAs(\"${r.sessionKey}\"))")
             is ResponseSpec.ObjectFields ->
                 r.fieldNames.forEach { field ->
-                    appendLine("            .check(jsonPath(\"$DOLLAR.$field\").saveAs(\"$field\"))")
+                    appendLine("                .check(jsonPath(\"$DOLLAR.$field\").saveAs(\"$field\"))")
                 }
         }
-        appendLine("        )")
+        appendLine("            )")
     }
 
     private fun directSignature(op: PageOperation): String {

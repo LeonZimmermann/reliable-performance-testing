@@ -10,6 +10,7 @@ object Constants {
         .baseUrl(BASE_URL)
         .acceptHeader("application/json")
         .contentTypeHeader("application/json")
+        .header("Authorization", "Bearer #{accessToken}")
 
     const val HIGH_NUMBER_OF_USERS = 10_000
 

@@ -9,6 +9,7 @@ duration: 45min
 ---
 
 # Stop praying, start testing
+
 ## Reliable Performance Testing with Gatling
 
 ---
@@ -19,7 +20,7 @@ duration: 45min
 - Your first performance test
 - Refactoring your first performance test
 - How to make the codebase more maintainable using code generation
-- How to model your tests correctly 
+- How to model your tests correctly
 - How to implement CI
 - How to solve common problems in performance testing
 
@@ -30,9 +31,9 @@ duration: 45min
 - An application with poor performance slows down the user and also the developers
 - Poor performance leads to longer development times because manual and automated tests take longer
 - ISO 9241-11
-  - Effektivität
-  - Effizienz
-  - Zufriedenstellung
+    - Effektivität
+    - Effizienz
+    - Zufriedenstellung
 - https://arxiv.org/abs/2408.12736
 - https://www.sciencedirect.com/science/article/abs/pii/S0164121207000088
 
@@ -105,9 +106,10 @@ object FirstSimulation : Simulation() {
 - extract Http Calls using the Page-Object pattern
     - Create a class for each controller in your backend that simulates its endpoints
 - Generate page objects automatically from OpenAPI spec
-  - Generate OAS Schema by backend or do spec first
-  - Tell an AI agent to write page objects accordingly or tell AI to write a gradle task which automatically converts the code
-  - Prompt: TODO
+    - Generate OAS Schema by backend or do spec first
+    - Tell an AI agent to write page objects accordingly or tell AI to write a gradle task which automatically converts
+      the code
+    - Prompt: TODO
 
 ---
 
@@ -150,6 +152,7 @@ layout: section
 ---
 
 # How to create realistic simulations
+
 ## Different kinds of performance tests
 
 ---
@@ -192,6 +195,7 @@ layout: section
 ---
 
 # How to solve common problems
+
 ## Authentication and test data generation
 
 ---
@@ -222,10 +226,10 @@ object OAuthFlow {
         ).exec(
             // Falls Login direkt fehlschlägt
             doIf(session -> session.getInt(AUTH_STATUS) != 200).then(
-                exec { session ->
-                    session.markAsFailed()
-                }
-            )
+        exec { session ->
+            session.markAsFailed()
+        }
+        )
         )
     }
 
@@ -243,10 +247,10 @@ object OAuthFlow {
                 .check(jsonPath("$.refresh_token").optional().saveAs(REFRESH_TOKEN))
         ).exec(
             doIf(session -> session.getInt(AUTH_STATUS) != 200).then(
-                exec { session ->
-                    session.markAsFailed()
-                }
-            )
+        exec { session ->
+            session.markAsFailed()
+        }
+        )
         )
     }
 
@@ -256,18 +260,21 @@ object OAuthFlow {
         )
     }
 
-    fun requestWithAutoRefresh(requestName: String, requestBuilder: io.gatling.javaapi.http.HttpRequestActionBuilder): ChainBuilder {
+    fun requestWithAutoRefresh(
+        requestName: String,
+        requestBuilder: io.gatling.javaapi.http.HttpRequestActionBuilder
+    ): ChainBuilder {
         return exec(
             http(requestName)
                 .get("/protected/resource")
                 .header("Authorization", "Bearer #{accessToken}")
                 .check(status().saveAs(AUTH_STATUS))
         ).doIf(session -> session.getInt(AUTH_STATUS) == 401).then(
-            refreshToken()
+        refreshToken()
         ).exec(
-            http("$requestName - retry after refresh")
-                .get("/protected/resource")
-                .header("Authorization", "Bearer #{accessToken}")
+        http("$requestName - retry after refresh")
+            .get("/protected/resource")
+            .header("Authorization", "Bearer #{accessToken}")
         )
     }
 }
@@ -276,6 +283,11 @@ object OAuthFlow {
 ---
 
 # How to generate test data
+
+- Feeders
+- Use Value Objects in your domain objects: Instead of storing names as Strings, create a value object Name, FirstName
+  or LastName and store the Strings inside of that. Then write test data generation logic for each value object. Then
+  the rest of the generation of test data can be automatated. For each field, check type and select the correct feeder
 
 ```
 fun books(): Iterator<Map<String, Any>> =
