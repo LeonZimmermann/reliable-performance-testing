@@ -57,9 +57,12 @@ val baseUrl: String = project.findProperty("baseUrl")?.toString()
     ?: System.getenv("GATLING_BASE_URL")
     ?: "http://localhost:8080"
 
+val debug: Boolean = project.findProperty("debug")?.toString()?.toBoolean() ?: false
+
 gatling {
     jvmArgs = listOf(
         "-DbaseUrl=$baseUrl",
+        "-Ddebug=$debug",
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
         "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
         "--add-opens=java.base/java.util=ALL-UNNAMED"
