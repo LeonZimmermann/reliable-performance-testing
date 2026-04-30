@@ -220,7 +220,7 @@ private object KotlinPageEmitter {
         "io.gatling.javaapi.core.ChainBuilder",
         "io.gatling.javaapi.core.CoreDsl.*",
         "io.gatling.javaapi.http.HttpDsl.*",
-        "dev.leon.zimmermann.rpt.gatling.utils.KeycloakAuth",
+        "dev.leon.zimmermann.rpt.gatling.utils.Authentication",
     )
 
     // ── Target language / framework identifiers ───────────────────────────────
@@ -318,7 +318,7 @@ private object KotlinPageEmitter {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private fun StringBuilder.appendExecWithChecks(op: PageOperation) {
-        appendLine("        return exec(KeycloakAuth.ensureValidToken)")
+        appendLine("        return exec(Authentication.ensureValidToken)")
         appendLine("            .exec(req")
         appendLine("                .check(statusIs(${op.successStatus}))")
         when (val r = op.response) {
