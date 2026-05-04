@@ -30,10 +30,12 @@ duration: 45min
 
 - An application with poor performance slows down the user and also the developers
 - Poor performance leads to longer development times because manual and automated tests take longer
-- ISO 9241-11
-    - Effektivität
-    - Effizienz
-    - Zufriedenstellung
+- Crucial for usability
+- ISO 9241-11 Ergonomics of human-system interaction
+    - Effectiveness
+    - Efficiency
+    - Satisfaction
+-
 - https://arxiv.org/abs/2408.12736
 - https://www.sciencedirect.com/science/article/abs/pii/S0164121207000088
 
@@ -43,45 +45,63 @@ duration: 45min
 
 ```kotlin
 object FirstSimulation : Simulation() {
-    private val browse = scenario("Browse Books V1")
+    private val browse = scenario("Browse Books V1") // define the workflow that should be tested
+    /* ... */
+
+    fun getBooks(): ChainBuilder { /* ... */
+    } // define a single request
+
+    val HTTP_PROTOCOL = HttpDsl.http
+        .baseUrl(BASE_URL) // Url to your application
+        .acceptHeader("application/json")
+        .contentTypeHeader("application/json")
+
+    init {
+        setUp(browse.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
+            .protocols(HTTP_PROTOCOL)
+            .assertions(/* ... */)
+    }
+}
+```
+
+---
+
+# Your first performance test
+
+```kotlin
+object FirstSimulation : Simulation() {
+    private val browse = scenario("Browse Books V1") // define the workflow that should be tested
         .exec(
-            group("Browse Books").on(
-                exec(getBooks()),
-                pause(1),
+            group("Browse Books").on( // grouping makes it easier to read the results
+                exec(getBooks()), // execute the getBooks request defined below
+                pause(1), // pause for one second
                 exec(getBooks())
             )
         )
 
-    fun getBooks(): ChainBuilder {
+    fun getBooks(): ChainBuilder { // define a single request
         return exec(
             http("getBooks")
                 .get("${Constants.BASE_URL}/books")
                 .queryParam("page", 1)
                 .queryParam("size", 10)
-                .check(status().`is`(200))
+                .check(status().`is`(200)) // checks the response body
         )
     }
 
     init {
-        setUp(browse.injectOpen(rampUsers(10_000).during(20.seconds)))
+        setUp(browse.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
             .protocols(HTTP_PROTOCOL)
             .assertions(
-                global().responseTime().max().lt(100),
+                global().responseTime().max()
+                    .lt(100), // You need to define values according to your business requirements
                 global().responseTime().mean().lt(50),
-                global().successfulRequests().percent().gt(95.0),
+                global().successfulRequests().percent()
+                    .gt(95.0), // Under load some requests might fail. That can always happen
             )
     }
-
 }
-
 ```
-
----
-
-- Building blocks of a performance test in Gatling
-    - Scenario
-    - Http-Requests
-    - setUp call
 
 --- 
 
@@ -90,6 +110,24 @@ object FirstSimulation : Simulation() {
 - essentially a map storing data that can be used in requests
 - Write: `check(jsonPath().saveAs()) / set inside of exec`
 - Read: `"#{}"` / `get` inside of exec
+
+
+- ```kotlin
+  fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
+        var req = http("getBooks").get("$baseUrl/books")
+        if (page != null) req = req.queryParam("page", page)
+        if (size != null) req = req.queryParam("size", size)
+        return exec(Authentication.ensureValidToken)
+            .exec(req
+                .check(statusIs(200))
+                .check(jsonPath("$.content").saveAs("content"))
+                .check(jsonPath("$.totalElements").saveAs("totalElements"))
+                .check(jsonPath("$.totalPages").saveAs("totalPages"))
+                .check(jsonPath("$.size").saveAs("size"))
+                .check(jsonPath("$.number").saveAs("number"))
+            )
+    }
+  ```
 
 ---
 
@@ -175,7 +213,6 @@ layout: section
     - Define an expected peak load according to your monitoring data
 - Define acceptable response time limits for your application (business consideration)
 - Define injection profiles that model your type of performance test
-    - TODO Examples
 
 ---
 
@@ -191,6 +228,26 @@ layout: section
 [https://docs.gatling.io/ai/assistant/vscode/create-simulation/#step-3-injection-profile]
 
 ---
+
+# Examples for injection profile usages
+
+- Scenario 1: You want to test if the book store can handle the average amount of users properly
+    - You start with rampUsers for a few seconds then continue with constantUsersPerSec
+    - You should look into your monitoring application to figure out the average amount of users
+- Scenario 2: You want to test if there are memory leaks in the book store application
+    - You run the constantUsersPerSec for a very long time, for example for two hours against a dedicated machine
+    - You monitor memory usage and see if the memory usages increases significantly over time
+    - You can do this with different sets of requests to figure out which requests cause issues
+    - Once you have found significant increased memory usages you should run the application locally and use the
+      profiler to investigate further
+- Scenario 3: The book store now sells tickets for signature sessions with authors and you want to make sure that the
+  application can handle peaks when the sale starts
+    - You need to guess the amount of users that try to login at peak times
+    - You use atOnceUsers and see if the application can handle the load
+    - In the future when you have some data about how many people tend to login at peak times you can take that number
+      for the test
+
+---
 layout: section
 ---
 
@@ -202,81 +259,78 @@ layout: section
 
 # How to test endpoints that need authentication
 
+- Login request at the start of the simulation: `exec(Authentication.login(username, password))`
+- Before every request that needs to be authenticated: `exec(Authentication.ensureValidToken)`
+- Add Authorization Header to every request by adding it to the HTTP_PROTOCOL constant
+- Remove Authorization Header from login and refresh calls with `header("Authorization", "")`
+
+---
+
+# How to test endpoints that need authentication
+
 ```kotlin
-
-object OAuthFlow {
-
-    private const val ACCESS_TOKEN = "accessToken"
-    private const val REFRESH_TOKEN = "refreshToken"
-    private const val AUTH_STATUS = "authStatus"
-
-    fun authenticate(): ChainBuilder {
-        return exec(
-            http("OAuth - Login")
-                .post("/oauth/token")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .formParam("grant_type", "password")
-                .formParam("client_id", "your-client-id")
-                .formParam("client_secret", "your-client-secret")
-                .formParam("username", "test-user")
-                .formParam("password", "test-password")
-                .check(status().saveAs(AUTH_STATUS))
-                .check(jsonPath("$.access_token").saveAs(ACCESS_TOKEN))
-                .check(jsonPath("$.refresh_token").saveAs(REFRESH_TOKEN))
-        ).exec(
-            // Falls Login direkt fehlschlägt
-            doIf(session -> session.getInt(AUTH_STATUS) != 200).then(
-        exec { session ->
-            session.markAsFailed()
-        }
+fun login(username: String, password: String): ChainBuilder = exec(
+    http("Login")
+        .post(TOKEN_URL) // keycloak for example
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Authorization", "") // authorization header should not be set here
+        .formParam("grant_type", "password") // start of credentials
+        .formParam("client_id", AuthenticationConfig.clientId)
+        .formParam("username", username)
+        .formParam("password", password) // end of credentials
+        .check(
+            status().`is`(200),
+            jsonPath("$.access_token").saveAs("accessToken"), // store data in session
+            jsonPath("$.refresh_token").saveAs("refreshToken"),
+            jsonPath("$.expires_in").ofLong().saveAs("tokenExpiresIn"),
         )
-        )
-    }
+).exec { session ->
+    session.set("tokenExpiresAt", System.currentTimeMillis() + session.getLong("tokenExpiresIn") * 1000L)
+}
+```
 
-    fun refreshToken(): ChainBuilder {
-        return exec(
-            http("OAuth - Refresh Token")
-                .post("/oauth/token")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .formParam("grant_type", "refresh_token")
-                .formParam("client_id", "your-client-id")
-                .formParam("client_secret", "your-client-secret")
-                .formParam("refresh_token", "#{" + REFRESH_TOKEN + "}")
-                .check(status().saveAs(AUTH_STATUS))
-                .check(jsonPath("$.access_token").saveAs(ACCESS_TOKEN))
-                .check(jsonPath("$.refresh_token").optional().saveAs(REFRESH_TOKEN))
-        ).exec(
-            doIf(session -> session.getInt(AUTH_STATUS) != 200).then(
-        exec { session ->
-            session.markAsFailed()
-        }
-        )
-        )
-    }
+---
 
-    fun attachBearerToken(): ChainBuilder {
-        return exec(
-            addHeader("Authorization", "Bearer #{accessToken}")
-        )
-    }
+# How to test endpoints that need authentication
 
-    fun requestWithAutoRefresh(
-        requestName: String,
-        requestBuilder: io.gatling.javaapi.http.HttpRequestActionBuilder
-    ): ChainBuilder {
-        return exec(
-            http(requestName)
-                .get("/protected/resource")
-                .header("Authorization", "Bearer #{accessToken}")
-                .check(status().saveAs(AUTH_STATUS))
-        ).doIf(session -> session.getInt(AUTH_STATUS) == 401).then(
-        refreshToken()
-        ).exec(
-        http("$requestName - retry after refresh")
-            .get("/protected/resource")
-            .header("Authorization", "Bearer #{accessToken}")
+- Add Authorization header to every request by adding it to the HTTP_PROTOCOL constant
+- Before executing an authenticated request: `exec(Authentication.ensureValidToken)`
+
+```kotlin
+val HTTP_PROTOCOL = HttpDsl.http
+    .baseUrl(BASE_URL)
+    .acceptHeader("application/json")
+    .contentTypeHeader("application/json")
+    .header("Authorization", "Bearer #{accessToken}")
+```
+
+```kotlin
+val ensureValidToken: ChainBuilder =
+    doIf { session ->
+        !session.contains("tokenExpiresAt") ||
+                System.currentTimeMillis() >= session.getLong("tokenExpiresAt") - REFRESH_BUFFER_MS
+    }.then(refreshToken)
+```
+
+---
+
+```kotlin
+val refreshToken: ChainBuilder = exec(
+    http("Refresh Token")
+        .post(TOKEN_URL) // keycloak for example
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Authorization", "") // authorization header should not be set here
+        .formParam("grant_type", "refresh_token")
+        .formParam("client_id", AuthenticationConfig.clientId)
+        .formParam("refresh_token", "#{refreshToken}")
+        .check(
+            status().`is`(200),
+            jsonPath("$.access_token").saveAs("accessToken"),
+            jsonPath("$.refresh_token").saveAs("refreshToken"),
+            jsonPath("$.expires_in").ofLong().saveAs("tokenExpiresIn"),
         )
-    }
+).exec { session ->
+    session.set("tokenExpiresAt", System.currentTimeMillis() + session.getLong("tokenExpiresIn") * 1000L)
 }
 ```
 
@@ -284,7 +338,11 @@ object OAuthFlow {
 
 # How to generate test data
 
-- Feeders
+- Generating test data can become extremely painful for complex domain objects
+- A good architecture for generating test data is crucial to prevent that pain
+- In Gatling feeders are used to generate test data
+- I really like the use of custom feeders
+- You can create a custom feeder for every kind of value that exists in your application, e.g. ISBN, Names, Emails etc.
 - Use Value Objects in your domain objects: Instead of storing names as Strings, create a value object Name, FirstName
   or LastName and store the Strings inside of that. Then write test data generation logic for each value object. Then
   the rest of the generation of test data can be automatated. For each field, check type and select the correct feeder

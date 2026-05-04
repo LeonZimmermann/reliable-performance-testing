@@ -20,7 +20,7 @@ object Authentication {
         password: String = AuthenticationConfig.password,
     ): ChainBuilder =
         exec(
-            http("Fetch Token")
+            http("Login")
                 .post(TOKEN_URL)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Authorization", "")
