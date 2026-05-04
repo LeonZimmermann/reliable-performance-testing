@@ -1,6 +1,6 @@
-name: Load Test (Azure)
+name: Load Test
 
-# Required secrets:
+# Required secrets (azure stage only):
 #   AZURE_CREDENTIALS     – service principal JSON ({ clientId, clientSecret, subscriptionId, tenantId })
 #   AZURE_RESOURCE_GROUP  – resource group to deploy the container into
 #   ACR_LOGIN_SERVER      – ACR login server, e.g. myregistry.azurecr.io
@@ -10,6 +10,14 @@ name: Load Test (Azure)
 on:
   workflow_dispatch:
     inputs:
+      stage:
+        description: Deployment target
+        required: true
+        default: pipeline
+        type: choice
+        options:
+          - pipeline
+          - azure
       simulation:
         description: Gatling simulation to run
         required: true
@@ -42,15 +50,28 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      # --- Pipeline stage ---
+      - name: Build backend JAR
+        if: inputs.stage == 'pipeline'
+        run: ./gradlew :backend:bootJar --no-daemon
+
+      - name: Start backend
+        if: inputs.stage == 'pipeline'
+        run: nohup java -jar backend/build/libs/*.jar > backend.log 2>&1 &
+
+      # --- Azure stage ---
       - name: Log in to Azure
+        if: inputs.stage == 'azure'
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Set up Docker Buildx
+        if: inputs.stage == 'azure'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to ACR
+        if: inputs.stage == 'azure'
         uses: docker/login-action@v3
         with:
           registry: ${{ secrets.ACR_LOGIN_SERVER }}
@@ -58,6 +79,7 @@ jobs:
           password: ${{ secrets.ACR_PASSWORD }}
 
       - name: Build and push image to ACR
+        if: inputs.stage == 'azure'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -67,6 +89,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Deploy to Azure Container Instances
+        if: inputs.stage == 'azure'
         run: |
           az container create \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
@@ -81,24 +104,31 @@ jobs:
             --memory 1.5 \
             --os-type Linux
 
+      # --- Resolve backend URL for both stages ---
       - name: Resolve backend URL
-        id: aci
+        id: backend
+        shell: bash
         run: |
-          FQDN=$(az container show \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "oas-demo-${{ github.run_number }}" \
-            --query ipAddress.fqdn \
-            --output tsv)
-          echo "base_url=http://$FQDN:8080" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.stage }}" == "azure" ]]; then
+            FQDN=$(az container show \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --name "oas-demo-${{ github.run_number }}" \
+              --query ipAddress.fqdn \
+              --output tsv)
+            echo "base_url=http://$FQDN:8080" >> $GITHUB_OUTPUT
+          else
+            echo "base_url=http://localhost:8080" >> $GITHUB_OUTPUT
+          fi
 
       - name: Run Gatling tests
         uses: ./.github/actions/run-gatling
         with:
-          base_url: ${{ steps.aci.outputs.base_url }}
-          simulation: ${{ github.event.inputs.simulation }}
+          base_url: ${{ steps.backend.outputs.base_url }}
+          simulation: ${{ inputs.simulation }}
 
+      # --- Azure cleanup (always runs to avoid orphaned containers) ---
       - name: Delete container instance
-        if: always()
+        if: always() && inputs.stage == 'azure'
         run: |
           az container delete \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
