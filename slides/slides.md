@@ -175,6 +175,14 @@ TODO
 
 ---
 
+# Integrate gatling in your CI pipeline
+
+- Some tests should be part of the build pipeline
+- You should have the possiblity to run a specific test against a specific stage with the press of a button and receive
+  the gatling report and monitoring data
+
+---
+
 # Considerations when integrating gatling in your CI pipeline
 
 - Pipeline runtime should be low. So maybe you dont want it to be an automatic CI task
@@ -263,6 +271,28 @@ layout: section
 - Before every request that needs to be authenticated: `exec(Authentication.ensureValidToken)`
 - Add Authorization Header to every request by adding it to the HTTP_PROTOCOL constant
 - Remove Authorization Header from login and refresh calls with `header("Authorization", "")`
+
+BrowseBooksSimulation.kt
+
+```kotlin
+scenario("Browse Books")
+    .exec(Authentication.login("username", "password")) // call login at the start of the scenario
+    .exec(browseBooks())
+```
+
+BooksPage.kt
+
+```kotlin
+fun getAllBooks(): ChainBuilder {
+    var req = http("getAllBooks").get("$baseUrl/v1/books")
+    return exec(Authentication.ensureValidToken) // call ensureValidToken before making request
+        .exec(
+            req
+                .check(statusIs(200))
+                .check(jsonPath("$[*]").ofList().saveAs("getAllBooksList"))
+        )
+}
+```
 
 ---
 
