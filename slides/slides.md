@@ -380,32 +380,126 @@ val refreshToken: ChainBuilder = exec(
   or LastName and store the Strings inside of that. Then write test data generation logic for each value object. Then
   the rest of the generation of test data can be automatated. For each field, check type and select the correct feeder
 
-```
-fun books(): Iterator<Map<String, Any>> =
-        generateSequence { nextBook() }.iterator()
+---
 
-    private fun nextBook(): Map<String, Any> {
-        val record = mutableMapOf<String, Any>(
-            "title" to "${TITLE_ADJECTIVES.random()} ${TITLE_NOUNS.random()} ${Random.nextInt(1, 1000)}",
-            "author" to "${FIRST_NAMES.random()} ${LAST_NAMES.random()}",
-            "isbn" to generateIsbn(),
-            "price" to (Random.nextInt(500, 5000) / 100.0),
+# How to generate test data
+
+Example of a feeder:
+```kotlin
+private val bookFeeder = intArrayOf(100).map { index ->
+    buildMap {
+        put("title", "Title $index") // it would be nice if the values would differ more
+        put("author", "Author") // it would be nice if the values were realistic and 
+        put("isbn", "978-11-123-${10000 + index}-21") // if the backend does validation, this needs to be a valid value
+        put("price", Random.nextInt(10, 20))
+        put("publisher", "Publisher")
+    }
+}.iterator()
+```
+
+Usage of the feeder:
+```kotlin
+private val scenario = scenario("Create Many Books")
+    .exec(Authentication.login())
+    .feed(bookFeeder)
+    .exec(createBooks(NUMBER_OF_BOOKS_TO_BE_GENERATED))
+```
+
+---
+
+# How to generate test data
+
+Introducing domain and value objects:
+```kotlin
+data class Book(
+  val title: Title, // Title value object instead of String
+  val author: Name, // Name value object instead of String
+  val isbn: ISBN,
+  val price: Price,
+  val publisher: Publisher? = null,
+)
+```
+
+Generating a book:
+```kotlin
+fun generate(): Book = Book(
+    title = Title.generate(),
+    author = Name.generate(),
+    isbn = ISBN.generate(),
+    price = Price.generate(),
+    publisher = if (Random.nextBoolean()) Publisher.generate() else null,
+)
+```
+
+---
+
+Generating a valid ISBN:
+```kotlin
+@JvmInline
+value class ISBN(val value: String) {
+  companion object {
+    fun generate(): ISBN {
+      val prefix = "978"
+      val registrant = Random.nextInt(0, 10)
+      val publication = Random.nextInt(100, 1000)
+      val title = Random.nextInt(10000, 100000)
+      val checkDigit = calculateCheckDigit("$prefix$registrant$publication$title")
+      return ISBN("978-$registrant-$publication-$title-$checkDigit")
+    }
+
+    private fun calculateCheckDigit(digits: String): Int { /* ... */ }
+  }
+}
+```
+
+---
+
+Generating random Names:
+```kotlin
+data class Name(val firstName: String, val lastName: String) {
+    val fullName: String get() = "$firstName $lastName"
+
+    companion object {
+        private val FIRST_NAMES = listOf(
+            "Alice", "Bob", "Clara", "David", "Elena", "Frank", "Grace",
+            "Henry", "Iris", "James", "Karen", "Liam", "Maya", "Noah",
         )
-        if (Random.nextBoolean()) {
-            record["publisher"] = PUBLISHERS.random()
-        }
-        return record
-    }
+        private val LAST_NAMES = listOf(
+            "Ashford", "Blake", "Chen", "Drake", "Evans", "Fischer", "Grant",
+            "Hayes", "Irons", "Jung", "Klein", "Lowe", "Marsh", "Nash",
+        )
 
-    private fun generateIsbn(): String {
-        val part1 = Random.nextInt(0, 10)
-        val part2 = Random.nextInt(100, 999)
-        val part3 = Random.nextInt(10000, 99999)
-        val part4 = Random.nextInt(0, 10)
-        return "978-$part1-$part2-$part3-$part4"
+        fun generate(): Name = Name(FIRST_NAMES.random(), LAST_NAMES.random())
     }
+}
 ```
 
+---
+
+Mapping objects to feeders:
+```kotlin
+interface TestDataGenerator<T> {
+  fun generate(): T
+  fun toSessionMap(value: T): Map<String, Any>
+
+  fun feeder(): Iterator<Map<String, Any>> = generateSequence { toSessionMap(generate()) }.iterator()
+}
+```
+
+```kotlin
+object BookFeeder : TestDataGenerator<Book> {
+
+    override fun generate(): Book = Book.generate()
+
+    override fun toSessionMap(value: Book): Map<String, Any> = buildMap {
+        put("title", value.title.value)
+        put("author", value.author.fullName)
+        put("isbn", value.isbn.value)
+        put("price", value.price.value)
+        value.publisher?.let { put("publisher", it.value) }
+    }
+}
+```
 ---
 layout: two-cols
 ---

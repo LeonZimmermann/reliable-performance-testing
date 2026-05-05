@@ -13,11 +13,11 @@ import dev.leon.zimmermann.rpt.gatling.utils.seconds
 @Suppress("unused")
 class BookBrowsingV2Simulation : Simulation() {
 
-    private val browse = scenario("Browse Books V2")
+    private val scenario = scenario("Browse Books V2")
         .exec(Authentication.login())
         .exec(browseBooksV2())
 
     init {
-        setup(browse, rampUsers(HIGH_NUMBER_OF_USERS).during(20.seconds), LOW_RESPONSE_TIME)
+        setup(scenario, rampUsers(HIGH_NUMBER_OF_USERS).during(20.seconds), LOW_RESPONSE_TIME)
     }
 }
