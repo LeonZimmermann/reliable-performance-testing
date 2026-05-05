@@ -1,6 +1,6 @@
 package dev.leon.zimmermann.rpt.gatling.domain
 
-data class AuthorName(val firstName: String, val lastName: String) {
+data class Name(val firstName: String, val lastName: String) {
     val fullName: String get() = "$firstName $lastName"
 
     companion object {
@@ -13,6 +13,6 @@ data class AuthorName(val firstName: String, val lastName: String) {
             "Hayes", "Irons", "Jung", "Klein", "Lowe", "Marsh", "Nash",
         )
 
-        fun generate(): AuthorName = AuthorName(FIRST_NAMES.random(), LAST_NAMES.random())
+        fun generate(): Name = Name(FIRST_NAMES.random(), LAST_NAMES.random())
     }
 }

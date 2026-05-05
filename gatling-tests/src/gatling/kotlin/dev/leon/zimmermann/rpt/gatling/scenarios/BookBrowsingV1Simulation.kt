@@ -10,6 +10,7 @@ import dev.leon.zimmermann.rpt.gatling.utils.Constants.LOW_RESPONSE_TIME
 import dev.leon.zimmermann.rpt.gatling.utils.setup
 import dev.leon.zimmermann.rpt.gatling.utils.seconds
 
+@Suppress("unused")
 class BookBrowsingV1Simulation : Simulation() {
 
     private val browse = scenario("Browse Books V1")

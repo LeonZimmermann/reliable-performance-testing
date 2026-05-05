@@ -178,8 +178,11 @@ TODO
 # Integrate gatling in your CI pipeline
 
 - Some tests should be part of the build pipeline
-- You should have the possiblity to run a specific test against a specific stage with the press of a button and receive
+- You should have the possibility to run a specific test against a specific stage with the press of a button and receive
   the gatling report and monitoring data
+- You can define simulations that should be run during the night
+
+![Pipeline Workflow](./pipeline-workflow.png)
 
 ---
 

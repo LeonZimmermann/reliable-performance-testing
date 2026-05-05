@@ -25,17 +25,6 @@ object UserBehaviour {
             exec(getBooks(page = 0, size = pageSize)),
         )
 
-    fun createBook() =
-        group("Create Book").on(
-            exec(createBookFromSession()),
-        )
-
-    fun createManyBooks(count: Int = 20) =
-        repeat(count).on(
-            feed(BookFeeder.books()),
-            exec(createBookFromSession()),
-        )
-
     fun browseAuthors(pageSize: Int = 50) =
         group("Browse Authors").on(
             exec(getAuthors()),

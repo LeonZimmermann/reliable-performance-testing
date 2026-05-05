@@ -13,6 +13,4 @@ object BookFeeder : TestDataGenerator<Book> {
         put("price", value.price.value)
         value.publisher?.let { put("publisher", it.value) }
     }
-
-    fun books(): Iterator<Map<String, Any>> = DomainFeeder.of(this)
 }
