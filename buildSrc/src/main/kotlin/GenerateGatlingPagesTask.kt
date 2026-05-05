@@ -61,6 +61,7 @@ data class PageOperation(
     val bodyFields: List<BodyField>,
     val successStatus: Int,
     val response: ResponseSpec,
+    val authenticated: Boolean = true,  // false only when operation has security: []
 ) {
     val hasSessionVariant: Boolean
         get() = pathParams.isNotEmpty() || queryParams.isNotEmpty() || bodyFields.isNotEmpty()
@@ -79,7 +80,7 @@ data class PageObject(
 // All OpenAPI-specific knowledge is confined here.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-private object OpenApiParser {
+internal object OpenApiParser {
 
     // ── OAS spec string constants ─────────────────────────────────────────────
     private const val CONTENT_TYPE_JSON = "application/json"
@@ -129,6 +130,8 @@ private object OpenApiParser {
             ?.let { lowerBodyFields(resolveRef(it, api), api) }
             ?: emptyList()
         val (status, responseSpec) = lowerResponse(op, api)
+        // security: [] on the operation explicitly opts out of auth; anything else (null = inherit, non-empty = explicit scheme) is authenticated
+        val authenticated = op.security == null || op.security.isNotEmpty()
 
         return PageOperation(
             id = op.operationId ?: "${method.name.lowercase()}_${path.replace("/", "_")}",
@@ -140,6 +143,7 @@ private object OpenApiParser {
             bodyFields = bodyFields,
             successStatus = status,
             response = responseSpec,
+            authenticated = authenticated,
         )
     }
 
@@ -211,7 +215,7 @@ private object OpenApiParser {
 // Walks the IR and emits Kotlin source. No OpenAPI types appear here.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-private object KotlinPageEmitter {
+internal object KotlinPageEmitter {
 
     // ── Generated file header ─────────────────────────────────────────────────
     private const val GENERATED_FILE_COMMENT =
@@ -318,8 +322,12 @@ private object KotlinPageEmitter {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private fun StringBuilder.appendExecWithChecks(op: PageOperation) {
-        appendLine("        return exec(Authentication.ensureValidToken)")
-        appendLine("            .exec(req")
+        if (op.authenticated) {
+            appendLine("        return exec(Authentication.ensureValidToken)")
+            appendLine("            .exec(req")
+        } else {
+            appendLine("        return exec(req")
+        }
         appendLine("                .check(statusIs(${op.successStatus}))")
         when (val r = op.response) {
             is ResponseSpec.None -> {}

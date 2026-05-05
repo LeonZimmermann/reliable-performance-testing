@@ -181,17 +181,13 @@ What can we do to reduce boilerplate?
 
 ---
 
+# Make the repo maintainable
+
 - Generate page objects automatically from OpenAPI spec
   - Generate OAS Schema by backend or do spec first
   - Tell an AI agent to write page objects accordingly or tell AI to write a gradle task which automatically converts
     the code
   - Prompt: TODO
-
----
-
-# Generate page objects from OpenAPI spec
-
-TODO
 
 ---
 layout: section
