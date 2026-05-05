@@ -19,7 +19,7 @@ duration: 45min
 - When and why performance testing matters
 - Your first performance test
 - Refactoring your first performance test
-- How to make the codebase more maintainable using code generation
+- How to make the codebase more maintainable
 - How to model your tests correctly
 - How to implement CI
 - How to solve common problems in performance testing
@@ -130,30 +130,74 @@ object FirstSimulation : Simulation() {
   ```
 
 ---
+layout: section
+---
 
-# Refactoring our simulation
-
-- Extract getBooks() into separate page object
-- Define response time assertions as a constant
-- Define load sizes as constants
+# Make the repo maintainable
 
 ---
 
 # Make the repo maintainable
 
 - extract Http Calls using the Page-Object pattern
-    - Create a class for each controller in your backend that simulates its endpoints
+- Define response time assertions as a constant
+- Define load sizes as constants
+
+```kotlin
+object BooksPage {
+    
+    /* ... */
+    
+    fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
+        var req = http("getBooks").get("$baseUrl/books")
+        if (page != null) req = req.queryParam("page", page) // add queryParams
+        if (size != null) req = req.queryParam("size", size)
+        return exec(Authentication.ensureValidToken) // will be explained later in the talk
+            .exec(req
+                .check(statusIs(200)) // make sure that the request is successful
+                .check(jsonPath("$.content").saveAs("content")) // store all response values with check().saveAs()
+                .check(jsonPath("$.totalElements").saveAs("totalElements"))
+                .check(jsonPath("$.totalPages").saveAs("totalPages"))
+                .check(jsonPath("$.size").saveAs("size"))
+                .check(jsonPath("$.number").saveAs("number"))
+            )
+    }
+
+    /* ... */
+  
+}
+```
+
+---
+
+# Make the repo maintainable
+
+- This approach creates a lot of repetitive code
+  - set query params and body
+  - check that the request was successful
+  - save all response values
+
+What can we do to reduce boilerplate?
+
+---
+
 - Generate page objects automatically from OpenAPI spec
-    - Generate OAS Schema by backend or do spec first
-    - Tell an AI agent to write page objects accordingly or tell AI to write a gradle task which automatically converts
-      the code
-    - Prompt: TODO
+  - Generate OAS Schema by backend or do spec first
+  - Tell an AI agent to write page objects accordingly or tell AI to write a gradle task which automatically converts
+    the code
+  - Prompt: TODO
 
 ---
 
 # Generate page objects from OpenAPI spec
 
 TODO
+
+---
+layout: section
+---
+
+# Integrate gatling in your CI pipeline
 
 ---
 
@@ -227,7 +271,7 @@ layout: section
 
 ---
 
-# Gatlings injection profiles for modelling different kinds of performance tests
+# Gatlings injection profiles for modeling different kinds of performance tests
 
 | Profile               	   | Description	                        | Use Case                 |
 |---------------------------|-------------------------------------|--------------------------|
@@ -264,7 +308,11 @@ layout: section
 
 # How to solve common problems
 
-## Authentication and test data generation
+---
+layout: section
+---
+
+# Authentication
 
 ---
 
@@ -366,6 +414,12 @@ val refreshToken: ChainBuilder = exec(
     session.set("tokenExpiresAt", System.currentTimeMillis() + session.getLong("tokenExpiresIn") * 1000L)
 }
 ```
+
+---
+layout: section
+---
+
+# Test Data Generation
 
 ---
 
