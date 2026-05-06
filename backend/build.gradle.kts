@@ -36,9 +36,16 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
 }
 
+val generateDomainObjects = tasks.register<GenerateDomainObjectsTask>("generateDomainObjects") {
+    specFile.set(file("../oas/openapi.yaml"))
+    outputDir.set(layout.buildDirectory.dir("generated/domain/kotlin"))
+    domainPackageName.set("dev.leon.zimmermann.rpt.domain")
+}
+
 sourceSets {
     main {
         kotlin.srcDir("$buildDir/generated/sources/openapi/src/main/kotlin")
+        kotlin.srcDir(generateDomainObjects.flatMap { it.outputDir })
     }
 }
 
@@ -67,7 +74,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     )
 }
 
-tasks.named("compileKotlin") { dependsOn("openApiGenerate") }
+tasks.named("compileKotlin") { dependsOn("openApiGenerate", "generateDomainObjects") }
 tasks.named("compileJava") { dependsOn("openApiGenerate") }
 
 tasks.withType<Test> {

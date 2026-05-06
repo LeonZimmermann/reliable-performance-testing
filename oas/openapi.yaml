@@ -232,6 +232,24 @@ paths:
           description: Not Found
 components:
   schemas:
+    ISBN:
+      type: string
+      description: ISBN-13 format identifier
+    Price:
+      type: number
+      format: double
+      description: Book price in currency units
+    Publisher:
+      type: string
+      description: Publisher name
+    PersonName:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+      required: [firstName, lastName]
     NewBook:
       type: object
       properties:
@@ -240,12 +258,11 @@ components:
         author:
           type: string
         isbn:
-          type: string
+          $ref: '#/components/schemas/ISBN'
         price:
-          type: number
-          format: double
+          $ref: '#/components/schemas/Price'
         publisher:
-          type: string
+          $ref: '#/components/schemas/Publisher'
         authorIds:
           type: array
           items:

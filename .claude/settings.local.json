@@ -26,7 +26,8 @@
       "Bash(Out-Null)",
       "Bash(Write-Host \"created\")",
       "Bash(./gradlew :buildSrc:test)",
-      "Bash(./gradlew :buildSrc:test :gatling-tests:generateGatlingPages)"
+      "Bash(./gradlew :buildSrc:test :gatling-tests:generateGatlingPages)",
+      "Bash(./gradlew :gatling-tests:compileGatlingKotlin :backend:generateDomainObjects)"
     ]
   }
 }

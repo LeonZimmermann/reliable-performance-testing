@@ -118,4 +118,58 @@ class KotlinDomainEmitterTest {
         val code = emit(fields = arrayOf(DomainField("id", "Long", true)))
         assertFalse(code.contains("import io.gatling"))
     }
+
+    // ── @JvmInline value class generation ────────────────────────────────────
+
+    private fun emitValueClass(name: String, primitiveType: String, packageName: String = "com.example.domain") =
+        KotlinDomainEmitter.emit(DomainObject(packageName, name, emptyList(), primitiveType))
+
+    @Test
+    fun `primitive String wrapper emits JvmInline value class`() {
+        val code = emitValueClass("ISBN", "String")
+        assertTrue(code.contains("@JvmInline"))
+        assertTrue(code.contains("value class ISBN(val value: String)"))
+        assertFalse(code.contains("data class"))
+    }
+
+    @Test
+    fun `primitive Double wrapper emits correct value class`() {
+        val code = emitValueClass("Price", "Double")
+        assertTrue(code.contains("@JvmInline"))
+        assertTrue(code.contains("value class Price(val value: Double)"))
+    }
+
+    @Test
+    fun `primitive Long wrapper emits correct value class`() {
+        val code = emitValueClass("EntityId", "Long")
+        assertTrue(code.contains("value class EntityId(val value: Long)"))
+    }
+
+    @Test
+    fun `value class has package declaration`() {
+        val code = emitValueClass("ISBN", "String", packageName = "my.pkg")
+        assertTrue(code.startsWith("package my.pkg\n"))
+    }
+
+    @Test
+    fun `value class has do-not-edit comment`() {
+        val code = emitValueClass("ISBN", "String")
+        assertTrue(code.contains("Generated from OpenAPI specification"))
+    }
+
+    @Test
+    fun `value class does not emit a constructor parameter list as data class`() {
+        val code = emitValueClass("Publisher", "String")
+        assertFalse(code.contains("data class Publisher"))
+        assertTrue(code.contains("value class Publisher(val value: String)"))
+    }
+
+    @Test
+    fun `schema with fields ignores primitiveType and emits data class`() {
+        // primitiveType set but fields also present — fields take precedence via normal data-class path
+        val domain = DomainObject("com.example", "Mixed", listOf(DomainField("id", "Long", true)), primitiveType = null)
+        val code = KotlinDomainEmitter.emit(domain)
+        assertTrue(code.contains("data class Mixed("))
+        assertFalse(code.contains("@JvmInline"))
+    }
 }

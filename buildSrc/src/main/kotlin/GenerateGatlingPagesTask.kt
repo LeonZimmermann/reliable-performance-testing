@@ -83,6 +83,7 @@ data class DomainObject(
     val packageName: String,
     val name: String,
     val fields: List<DomainField>,
+    val primitiveType: String? = null,  // non-null for @JvmInline value classes
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -198,7 +199,8 @@ internal object OpenApiParser {
     private fun collectProperties(schema: Schema<*>, api: OpenAPI): Map<String, Schema<*>> {
         val result = linkedMapOf<String, Schema<*>>()
         schema.allOf?.forEach { sub -> result.putAll(collectProperties(resolveRef(sub, api), api)) }
-        schema.properties?.forEach { (k, v) -> result[k] = v as Schema<*> }
+        // Resolve each property's $ref so mapType sees the concrete type (e.g. Price → number/double).
+        schema.properties?.forEach { (k, v) -> result[k] = resolveRef(v as Schema<*>, api) }
         return result
     }
 
@@ -238,12 +240,17 @@ internal object SchemaParser {
 
     fun parse(api: OpenAPI, packageName: String): List<DomainObject> =
         (api.components?.schemas ?: emptyMap<String, Schema<*>>()).map { (name, schema) ->
-            DomainObject(
-                packageName = packageName,
-                name = name,
-                fields = flattenFields(schema, api),
-            )
+            if (isPrimitiveWrapper(schema)) {
+                DomainObject(packageName = packageName, name = name, fields = emptyList(), primitiveType = mapPrimitive(schema))
+            } else {
+                DomainObject(packageName = packageName, name = name, fields = flattenFields(schema, api))
+            }
         }
+
+    private fun isPrimitiveWrapper(schema: Schema<*>): Boolean {
+        val type = schema.type ?: return false
+        return type != "array" && type != "object" && schema.properties.isNullOrEmpty() && schema.allOf.isNullOrEmpty()
+    }
 
     private fun flattenFields(schema: Schema<*>, api: OpenAPI): List<DomainField> {
         val props = collectProps(schema, api)
@@ -472,19 +479,24 @@ internal object KotlinDomainEmitter {
         appendLine()
         appendLine(GENERATED_FILE_COMMENT)
         appendLine()
-        val required = domain.fields.filter { it.required }
-        val optional = domain.fields.filter { !it.required }
-        val allFields = required + optional
-        if (allFields.isEmpty()) {
-            appendLine("class ${domain.name}")
+        if (domain.primitiveType != null) {
+            appendLine("@JvmInline")
+            appendLine("value class ${domain.name}(val value: ${domain.primitiveType})")
         } else {
-            appendLine("data class ${domain.name}(")
-            allFields.forEachIndexed { i, field ->
-                val typeDecl = if (field.required) field.typeName else "${field.typeName}? = null"
-                val comma = if (i < allFields.size - 1) "," else ""
-                appendLine("    val ${field.name}: $typeDecl$comma")
+            val required = domain.fields.filter { it.required }
+            val optional = domain.fields.filter { !it.required }
+            val allFields = required + optional
+            if (allFields.isEmpty()) {
+                appendLine("class ${domain.name}")
+            } else {
+                appendLine("data class ${domain.name}(")
+                allFields.forEachIndexed { i, field ->
+                    val typeDecl = if (field.required) field.typeName else "${field.typeName}? = null"
+                    val comma = if (i < allFields.size - 1) "," else ""
+                    appendLine("    val ${field.name}: $typeDecl$comma")
+                }
+                appendLine(")")
             }
-            appendLine(")")
         }
     }
 }
@@ -492,6 +504,30 @@ internal object KotlinDomainEmitter {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Gradle Task — orchestrates the frontend → backend pipeline
 // ═══════════════════════════════════════════════════════════════════════════════
+
+abstract class GenerateDomainObjectsTask : DefaultTask() {
+
+    @get:InputFile
+    abstract val specFile: RegularFileProperty
+
+    @get:Input
+    abstract val domainPackageName: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val api = OpenAPIV3Parser().read(specFile.get().asFile.absolutePath)
+            ?: error("Failed to parse OpenAPI spec at ${specFile.get().asFile.absolutePath}")
+
+        val dir = outputDir.get().asFile.also { it.deleteRecursively(); it.mkdirs() }
+
+        SchemaParser.parse(api, domainPackageName.get()).forEach { domain ->
+            File(dir, "${domain.name}.kt").writeText(KotlinDomainEmitter.emit(domain))
+        }
+    }
+}
 
 abstract class GenerateGatlingPagesTask : DefaultTask() {
 
