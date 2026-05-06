@@ -183,11 +183,104 @@ What can we do to reduce boilerplate?
 
 # Make the repo maintainable
 
-- Generate page objects automatically from OpenAPI spec
-  - Generate OAS Schema by backend or do spec first
-  - Tell an AI agent to write page objects accordingly or tell AI to write a gradle task which automatically converts
-    the code
-  - Prompt: TODO
+- We can generate that code automatically
+
+Hey Claude, please create Gatling PageObjects in Kotlin and without comments for the OpenAPI Spec that I provided here:
+```yaml
+paths:
+  /v1/books:
+    get:
+      tags: [Books]
+      operationId: getAllBooks
+      summary: Get all books (no pagination)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+  /books:
+    get:
+      tags: [Books]
+      operationId: getBooks
+      summary: Get all books (paginated)
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 0
+          required: false
+        - in: query
+          name: size
+          schema:
+            type: integer
+            default: 20
+          required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookPage'
+```
+
+Result:
+```kotlin
+package api
+
+import io.gatling.javaapi.core.CoreDsl.*
+import io.gatling.javaapi.http.HttpDsl.*
+
+object BooksApi {
+
+  val getAllBooks =
+    exec(
+      http("GET All Books - /v1/books")
+        .get("/v1/books")
+        .check(status().`is`(200))
+    )
+
+  val getBooksPaginated =
+    exec(
+      http("GET Books Paginated - /books")
+        .get("/books")
+        .queryParam("page", "#{page}")
+        .queryParam("size", "#{size}")
+        .check(status().`is`(200))
+    )
+
+  val getBooksPaginatedWithDefaults =
+    exec { session ->
+      val page = session.getIntOrNull("page") ?: 0
+      val size = session.getIntOrNull("size") ?: 20
+      session.setAll(mapOf("page" to page, "size" to size))
+    }.exec(getBooksPaginated)
+
+  fun getBooks(page: Int = 0, size: Int = 20) =
+    exec(
+      http("GET Books page=$page size=$size")
+        .get("/books")
+        .queryParam("page", page)
+        .queryParam("size", size)
+        .check(status().`is`(200))
+    )
+}
+```
+
+---
+
+# Make the repo maintainable
+
+- This approach is not deterministic
+- A good alternative: Hey Claude, write a Gradle Task that converts any OpenApi Spec into Gatling Page Objects in Kotlin without comments. Apply TDD for development. Here is a reference for the OpenAPI Spec: ...
+- The task is deterministic. It always works the same
+- Because the task is deterministic, it is verifiable
+- If the task doesn't work, you (or AI) can fix it
 
 ---
 layout: section

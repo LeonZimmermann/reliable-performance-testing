@@ -24,7 +24,8 @@
       "Bash(xargs grep *)",
       "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\leonz\\\\Documents\\\\Projekte\\\\OASDemo\\\\buildSrc\\\\src\\\\test\\\\kotlin\")",
       "Bash(Out-Null)",
-      "Bash(Write-Host \"created\")"
+      "Bash(Write-Host \"created\")",
+      "Bash(./gradlew :buildSrc:test)"
     ]
   }
 }

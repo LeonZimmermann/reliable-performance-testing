@@ -224,13 +224,10 @@ internal object KotlinPageEmitter {
         "io.gatling.javaapi.core.ChainBuilder",
         "io.gatling.javaapi.core.CoreDsl.*",
         "io.gatling.javaapi.http.HttpDsl.*",
-        "dev.leon.zimmermann.rpt.gatling.utils.Authentication",
     )
 
     // ── Target language / framework identifiers ───────────────────────────────
-    private const val BASE_CLASS = "BasePage"
     private const val CHAIN_BUILDER_TYPE = "ChainBuilder"
-    private const val BASE_URL_PROPERTY = "baseUrl"
     private const val CONTENT_TYPE_HEADER = "Content-Type"
     private const val CONTENT_TYPE_JSON = "application/json"
 
@@ -253,7 +250,7 @@ internal object KotlinPageEmitter {
         appendLine()
         REQUIRED_IMPORTS.forEach { appendLine("import $it") }
         appendLine()
-        appendLine("object ${page.tag}Page : $BASE_CLASS() {")
+        appendLine("object ${page.tag}Page {")
         appendLine()
         page.operations.forEach { op ->
             appendDirectMethod(op)
@@ -322,13 +319,8 @@ internal object KotlinPageEmitter {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private fun StringBuilder.appendExecWithChecks(op: PageOperation) {
-        if (op.authenticated) {
-            appendLine("        return exec(Authentication.ensureValidToken)")
-            appendLine("            .exec(req")
-        } else {
-            appendLine("        return exec(req")
-        }
-        appendLine("                .check(statusIs(${op.successStatus}))")
+        appendLine("        return exec(req")
+        appendLine("                .check(status().`is`(${op.successStatus}))")
         when (val r = op.response) {
             is ResponseSpec.None -> {}
             is ResponseSpec.ArrayBody ->
@@ -356,26 +348,22 @@ internal object KotlinPageEmitter {
     }
 
     /**
-     * OAS path "/books/{id}" → `"$baseUrl/books/${id}"` (Kotlin string template).
+     * OAS path "/books/{id}" → `"/books/${id}"` (Kotlin string template).
      * Path parameter placeholders are replaced with Kotlin template expressions.
      */
-    private fun directUrl(op: PageOperation): String {
-        val withKotlinVars = op.pathParams.fold(op.path) { acc, p ->
+    private fun directUrl(op: PageOperation): String =
+        op.pathParams.fold(op.path) { acc, p ->
             acc.replace("{${p.name}}", "$DOLLAR{${p.name}}")
         }
-        return "$DOLLAR$BASE_URL_PROPERTY$withKotlinVars"
-    }
 
     /**
-     * OAS path "/books/{id}" → `"$baseUrl/books/#{id}"` (Gatling EL).
+     * OAS path "/books/{id}" → `"/books/#{id}"` (Gatling EL).
      * Path parameter placeholders are replaced with Gatling Expression Language tokens.
      */
-    private fun sessionUrl(op: PageOperation): String {
-        val withEL = op.pathParams.fold(op.path) { acc, p ->
+    private fun sessionUrl(op: PageOperation): String =
+        op.pathParams.fold(op.path) { acc, p ->
             acc.replace("{${p.name}}", "#{${p.name}}")
         }
-        return "$DOLLAR$BASE_URL_PROPERTY$withEL"
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

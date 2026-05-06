@@ -72,13 +72,14 @@ class KotlinPageEmitterTest {
         assertTrue(code.contains("import io.gatling.javaapi.core.ChainBuilder"))
         assertTrue(code.contains("import io.gatling.javaapi.core.CoreDsl.*"))
         assertTrue(code.contains("import io.gatling.javaapi.http.HttpDsl.*"))
-        assertTrue(code.contains("import dev.leon.zimmermann.rpt.gatling.utils.Authentication"))
+        assertFalse(code.contains("import dev.leon.zimmermann.rpt.gatling.utils.Authentication"))
     }
 
     @Test
-    fun `object is named tag + Page and extends BasePage`() {
+    fun `object is named tag + Page with no superclass`() {
         val code = emit(tag = "Books")
-        assertTrue(code.contains("object BooksPage : BasePage()"))
+        assertTrue(code.contains("object BooksPage {"))
+        assertFalse(code.contains("BasePage"))
     }
 
     @Test
@@ -123,7 +124,7 @@ class KotlinPageEmitterTest {
             pathParams = listOf(Param("id", KotlinType.LONG, true)),
         )
         val code = emit(ops = arrayOf(op))
-        assertTrue(code.contains("\$baseUrl/items/\${id}"))
+        assertTrue(code.contains("/items/\${id}"))
     }
 
     @Test
@@ -133,7 +134,7 @@ class KotlinPageEmitterTest {
             pathParams = listOf(Param("id", KotlinType.LONG, true)),
         )
         val code = emit(ops = arrayOf(op))
-        assertTrue(code.contains("\$baseUrl/items/#{id}"))
+        assertTrue(code.contains("/items/#{id}"))
     }
 
     @Test
@@ -149,14 +150,14 @@ class KotlinPageEmitterTest {
             successStatus = 200, response = ResponseSpec.None,
         )
         val code = emit(ops = arrayOf(op))
-        assertTrue(code.contains("\$baseUrl/posts/\${postId}/comments/\${commentId}"))
-        assertTrue(code.contains("\$baseUrl/posts/#{postId}/comments/#{commentId}"))
+        assertTrue(code.contains("/posts/\${postId}/comments/\${commentId}"))
+        assertTrue(code.contains("/posts/#{postId}/comments/#{commentId}"))
     }
 
     @Test
-    fun `path with no params produces plain dollar-baseUrl path`() {
+    fun `path with no params produces plain path`() {
         val code = emit(ops = arrayOf(get()))
-        assertTrue(code.contains("\$baseUrl/items"))
+        assertTrue(code.contains(".get(\"/items\")"))
     }
 
     @Test
@@ -352,27 +353,27 @@ class KotlinPageEmitterTest {
     }
 
     @Test
-    fun `correct status code is emitted in statusIs check — 200`() {
+    fun `correct status code is emitted in status check — 200`() {
         val code = emit(ops = arrayOf(get(successStatus = 200)))
-        assertTrue(code.contains(".check(statusIs(200))"))
+        assertTrue(code.contains(".check(status().`is`(200))"))
     }
 
     @Test
-    fun `correct status code is emitted in statusIs check — 201`() {
+    fun `correct status code is emitted in status check — 201`() {
         val code = emit(ops = arrayOf(post(successStatus = 201)))
-        assertTrue(code.contains(".check(statusIs(201))"))
+        assertTrue(code.contains(".check(status().`is`(201))"))
     }
 
     @Test
-    fun `correct status code is emitted in statusIs check — 204`() {
+    fun `correct status code is emitted in status check — 204`() {
         val code = emit(ops = arrayOf(delete()))
-        assertTrue(code.contains(".check(statusIs(204))"))
+        assertTrue(code.contains(".check(status().`is`(204))"))
     }
 
     @Test
-    fun `authenticated endpoint includes ensureValidToken`() {
+    fun `generated page objects never reference Authentication`() {
         val code = emit(ops = arrayOf(get(authenticated = true)))
-        assertTrue(code.contains("Authentication.ensureValidToken"))
+        assertFalse(code.contains("Authentication"))
     }
 
     @Test
@@ -384,7 +385,7 @@ class KotlinPageEmitterTest {
     @Test
     fun `unauthenticated endpoint still emits status check`() {
         val code = emit(ops = arrayOf(get(authenticated = false, successStatus = 200)))
-        assertTrue(code.contains(".check(statusIs(200))"))
+        assertTrue(code.contains(".check(status().`is`(200))"))
     }
 
     @Test
@@ -395,23 +396,6 @@ class KotlinPageEmitterTest {
         )))
         assertFalse(code.contains("Authentication.ensureValidToken"))
         assertTrue(code.contains("""jsonPath("$[*]").ofList().saveAs("itemsList")"""))
-    }
-
-    @Test
-    fun `page with mixed auth and unauth operations emits correct auth per method`() {
-        val securedGet = get(id = "getSecured", authenticated = true)
-        val publicGet  = get(id = "getPublic",  path = "/public", authenticated = false)
-        val code = emit(ops = arrayOf(securedGet, publicGet))
-
-        val lines = code.lines()
-        val securedFunLine = lines.indexOfFirst { it.contains("fun getSecured(") }
-        val publicFunLine  = lines.indexOfFirst { it.contains("fun getPublic(") }
-        val tokenLines     = lines.mapIndexedNotNull { i, l ->
-            if (l.contains("Authentication.ensureValidToken")) i else null
-        }
-        assertTrue(tokenLines.all { it < publicFunLine },
-            "ensureValidToken must not appear inside the unauthenticated method block")
-        assertTrue(tokenLines.any { it > securedFunLine && it < publicFunLine })
     }
 
     @Test
@@ -518,14 +502,14 @@ class KotlinPageEmitterTest {
     fun `DELETE with 204 emits no jsonPath checks`() {
         val code = emit(ops = arrayOf(delete()))
         assertFalse(code.contains("jsonPath"))
-        assertTrue(code.contains(".check(statusIs(204))"))
+        assertTrue(code.contains(".check(status().`is`(204))"))
     }
 
     @Test
     fun `unauthenticated DELETE still checks status code`() {
         val code = emit(ops = arrayOf(delete(authenticated = false)))
         assertFalse(code.contains("Authentication.ensureValidToken"))
-        assertTrue(code.contains(".check(statusIs(204))"))
+        assertTrue(code.contains(".check(status().`is`(204))"))
     }
 
     @Test
@@ -541,7 +525,7 @@ class KotlinPageEmitterTest {
             successStatus = 200, response = ResponseSpec.ObjectFields(listOf("id", "name")),
         )
         val code = emit(ops = arrayOf(op))
-        assertTrue(code.contains("\$baseUrl/items/\${id}"))
+        assertTrue(code.contains("/items/\${id}"))
         assertFalse(code.contains("if (name != null)"))
         assertTrue(code.contains("if (price != null) bodyParts.add"))
         assertTrue(code.contains("""jsonPath("$.id")"""))
