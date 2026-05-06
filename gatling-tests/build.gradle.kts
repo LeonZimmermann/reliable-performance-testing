@@ -20,6 +20,7 @@ val generateGatlingPages = tasks.register<GenerateGatlingPagesTask>("generateGat
     specFile.set(file("../oas/openapi.yaml"))
     outputDir.set(layout.buildDirectory.dir("generated/gatling/kotlin"))
     packageName.set("dev.leon.zimmermann.rpt.gatling.pages")
+    domainPackageName.set("dev.leon.zimmermann.rpt.gatling.domain")
 }
 
 sourceSets {

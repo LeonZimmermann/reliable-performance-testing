@@ -73,6 +73,18 @@ data class PageObject(
     val operations: List<PageOperation>,
 )
 
+data class DomainField(
+    val name: String,
+    val typeName: String,   // full Kotlin type name, e.g. "String", "Long", "List<Book>"
+    val required: Boolean,
+)
+
+data class DomainObject(
+    val packageName: String,
+    val name: String,
+    val fields: List<DomainField>,
+)
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Frontend — OpenApiParser
 //
@@ -206,6 +218,84 @@ internal object OpenApiParser {
         schema.type == OAS_TYPE_BOOLEAN -> KotlinType.BOOLEAN
         schema.type == OAS_TYPE_ARRAY -> KotlinType.LIST
         else -> KotlinType.STRING
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Frontend — SchemaParser
+//
+// Reads api.components.schemas and lowers each entry to a DomainObject IR node.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+internal object SchemaParser {
+
+    private const val OAS_TYPE_STRING = "string"
+    private const val OAS_TYPE_INTEGER = "integer"
+    private const val OAS_TYPE_NUMBER = "number"
+    private const val OAS_TYPE_BOOLEAN = "boolean"
+    private const val OAS_TYPE_ARRAY = "array"
+    private const val OAS_FORMAT_INT64 = "int64"
+
+    fun parse(api: OpenAPI, packageName: String): List<DomainObject> =
+        (api.components?.schemas ?: emptyMap<String, Schema<*>>()).map { (name, schema) ->
+            DomainObject(
+                packageName = packageName,
+                name = name,
+                fields = flattenFields(schema, api),
+            )
+        }
+
+    private fun flattenFields(schema: Schema<*>, api: OpenAPI): List<DomainField> {
+        val props = collectProps(schema, api)
+        val required = collectReq(schema, api)
+        return props.map { (name, propSchema) ->
+            DomainField(name, mapTypeName(propSchema), name in required)
+        }
+    }
+
+    private fun mapTypeName(schema: Schema<*>): String {
+        val ref = schema.`$ref`
+        if (ref != null) return ref.substringAfterLast("/")
+
+        if (schema.type == OAS_TYPE_ARRAY || schema is ArraySchema) {
+            val items = (schema as? ArraySchema)?.items ?: return "List<Any>"
+            val itemRef = items.`$ref`
+            val itemType = if (itemRef != null) itemRef.substringAfterLast("/") else mapPrimitive(items)
+            return "List<$itemType>"
+        }
+
+        return mapPrimitive(schema)
+    }
+
+    private fun mapPrimitive(schema: Schema<*>): String = when {
+        schema.type == OAS_TYPE_STRING -> "String"
+        schema.type == OAS_TYPE_NUMBER -> "Double"
+        schema.type == OAS_TYPE_INTEGER && schema.format == OAS_FORMAT_INT64 -> "Long"
+        schema.type == OAS_TYPE_INTEGER -> "Int"
+        schema.type == OAS_TYPE_BOOLEAN -> "Boolean"
+        else -> "String"
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun collectProps(schema: Schema<*>, api: OpenAPI): Map<String, Schema<*>> {
+        val result = linkedMapOf<String, Schema<*>>()
+        val resolved = resolveRef(schema, api)
+        resolved.allOf?.forEach { sub -> result.putAll(collectProps(resolveRef(sub, api), api)) }
+        resolved.properties?.forEach { (k, v) -> result[k] = v as Schema<*> }
+        return result
+    }
+
+    private fun collectReq(schema: Schema<*>, api: OpenAPI): Set<String> {
+        val result = mutableSetOf<String>()
+        val resolved = resolveRef(schema, api)
+        resolved.allOf?.forEach { sub -> result.addAll(collectReq(resolveRef(sub, api), api)) }
+        resolved.required?.let { result.addAll(it) }
+        return result
+    }
+
+    private fun resolveRef(schema: Schema<*>, api: OpenAPI): Schema<*> {
+        val ref = schema.`$ref` ?: return schema
+        return api.components?.schemas?.get(ref.substringAfterLast("/")) ?: schema
     }
 }
 
@@ -367,6 +457,39 @@ internal object KotlinPageEmitter {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Backend — KotlinDomainEmitter
+//
+// Walks DomainObject IR nodes and emits Kotlin data classes.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+internal object KotlinDomainEmitter {
+
+    private const val GENERATED_FILE_COMMENT =
+        "// Generated from OpenAPI specification — do not edit manually."
+
+    fun emit(domain: DomainObject): String = buildString {
+        appendLine("package ${domain.packageName}")
+        appendLine()
+        appendLine(GENERATED_FILE_COMMENT)
+        appendLine()
+        val required = domain.fields.filter { it.required }
+        val optional = domain.fields.filter { !it.required }
+        val allFields = required + optional
+        if (allFields.isEmpty()) {
+            appendLine("class ${domain.name}")
+        } else {
+            appendLine("data class ${domain.name}(")
+            allFields.forEachIndexed { i, field ->
+                val typeDecl = if (field.required) field.typeName else "${field.typeName}? = null"
+                val comma = if (i < allFields.size - 1) "," else ""
+                appendLine("    val ${field.name}: $typeDecl$comma")
+            }
+            appendLine(")")
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Gradle Task — orchestrates the frontend → backend pipeline
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -377,6 +500,9 @@ abstract class GenerateGatlingPagesTask : DefaultTask() {
 
     @get:Input
     abstract val packageName: Property<String>
+
+    @get:Input
+    abstract val domainPackageName: Property<String>
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
@@ -391,6 +517,11 @@ abstract class GenerateGatlingPagesTask : DefaultTask() {
         val pages = OpenApiParser.parse(api, packageName.get())
         pages.forEach { page ->
             File(dir, "${page.tag}Page.kt").writeText(KotlinPageEmitter.emit(page))
+        }
+
+        val domains = SchemaParser.parse(api, domainPackageName.get())
+        domains.forEach { domain ->
+            File(dir, "${domain.name}.kt").writeText(KotlinDomainEmitter.emit(domain))
         }
     }
 }
