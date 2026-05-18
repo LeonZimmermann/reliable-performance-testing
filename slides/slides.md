@@ -43,6 +43,11 @@ duration: 45min
 
 # Your first performance test
 
+Some background information on the system under test:
+- A tiny book store has gone viral, because of an video of an influencer
+- The book store decided to create an online shop and now needs to be able to handle lots of users simultaneously
+- 
+
 ```kotlin
 object FirstSimulation : Simulation() {
     private val browse = scenario("Browse Books V1") // define the workflow that should be tested
