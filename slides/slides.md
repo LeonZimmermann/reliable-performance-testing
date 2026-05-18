@@ -17,6 +17,7 @@ duration: 45min
 
 # Outline
 
+- The Goal of this talk
 - When and why performance testing matters
 - Your first performance test
 - Refactoring your first performance test
@@ -24,6 +25,16 @@ duration: 45min
 - How to model your tests correctly
 - How to implement CI
 - How to solve common problems in performance testing
+
+---
+
+# The Goal of this talk
+
+- Get you started with your first performance test
+- Avoid a lot of pain down the road, by helping you write performance tests that are maintainable right off the bat
+- Enable you to properly integrate your performance tests into CI
+- Help you write performance tests that are actually useful
+- Help you solve common problems that occur when writing performance tests
 
 ---
 
@@ -142,7 +153,9 @@ init {
 
 # Your first performance test
 
-Test Results
+Running the performance test
+
+`./gradlew gatlingRun -your.package.FirstSimulation`
 
 ![v1-test-results.png](./v1-test-results.png)
 
@@ -383,37 +396,57 @@ layout: section
 
 # Integrate gatling in your CI pipeline
 
-- We now know how to write performance tests using gatling
-- We know how to run performance tests and how to read the report
-- We refactored the code so that changes to the API will result in the least amount of effort for as as possible
-- 
+- ✅ We now know how to write performance tests using gatling
+- ✅ We know how to run performance tests and how to read the report
+- ✅ We refactored the code so that changes to the API will result in the least amount of effort for as as possible
+
+But...
+- 🤔 How do we integrate all of this into our pipelines?
+- 🤔 When do we run tests? Periodically? On-Demand?
+- 🤔 Against which stage do we run our tests?
 
 ---
 
 # Integrate gatling in your CI pipeline
 
-- Run application and gatling locally for testing purposes
-- Run application and gatling in Pipeline for CI quality gates
-- Run application on a dedicated server and gatling in pipeline for dedicated tests
-- Run gatling against prod environment for dedicated tests (analyze when a good time is beforehand)
-- Always monitor your application during performance tests
+Guidelines
 
-- How?
-    - The same way you would do locally
-    - Run your application using docker
-    - Wait for the application to be ready using a custom bash probe
-    - Seed data if necessary
-    - Run the performance test
-    - Store the report and monitoring data
+- 📝 Run application and gatling locally for testing purposes
+- 📝 Run application and gatling in Pipeline for CI quality gates
+- 📝 Run application on a dedicated server and gatling in pipeline for dedicated tests
+- 📝 Run gatling against prod environment for dedicated tests (analyze when a good time is beforehand)
+- 📝 Always monitor your application during performance tests
 
 ---
 
 # Integrate gatling in your CI pipeline
 
-- Some tests should be part of the build pipeline
+How do I run the tests in the pipeline?
+
+- The same way you would do locally
+- Run your application using docker: `docker compose up`
+- Wait for the application to be ready using a custom bash probe
+- Seed data if necessary. You can just create and run a dedicated simulation for that
+- Run the performance test: `./gradlew gatlingRun -your.package.HelloSimulation`
+- Store the report and monitoring data
+
+---
+layout: two-cols
+---
+
+# Integrate gatling in your CI pipeline
+
+Deciding when to run which test
+
+- This is pretty much on you
+- You need to decide how critical the performance of specific features are for your application
+- If your application is not usable with poor performance, use these tests as a quality gate for your CI
+- If not, you can run them sporadically
 - You should have the possibility to run a specific test against a specific stage with the press of a button and receive
   the gatling report and monitoring data
-- You can define simulations that should be run during the night
+- A good compromise: You can define simulations that should be run during the night
+
+::right::
 
 ![Pipeline Workflow](./pipeline-workflow.png)
 
@@ -435,7 +468,12 @@ layout: section
 
 # How to create realistic simulations
 
-## Different kinds of performance tests
+---
+
+# How to create realistic simulations
+
+- ✅ We can now create performance tests and run them in the pipeline
+- 🤔 But how do we make sure that all the tests we write are useful?
 
 ---
 
