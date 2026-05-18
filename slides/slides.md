@@ -4,6 +4,7 @@ title: Stop praying, start testing - reliable performance testing with gatling
 class: text-center
 drawings:
   persist: false
+presenter: true
 mdc: true
 duration: 45min
 ---
@@ -43,7 +44,7 @@ duration: 45min
 
 # Your first performance test
 
-Some background information on the system under test:
+Some background information on the system under test
 
 - A tiny book store has gone viral, because of an video of an influencer
 - The book store decided to create an online shop and now needs to be able to handle lots of users simultaneously
@@ -51,9 +52,17 @@ Some background information on the system under test:
 
 ---
 
+# Your first performance test
+
+The UI of the application
+
 ![screenshot-application.png](./screenshot-application.png)
 
 ---
+
+# Your first performance test
+
+An overview of the Simulation
 
 ```kotlin
 object FirstSimulation : Simulation() {
@@ -78,6 +87,10 @@ object FirstSimulation : Simulation() {
 
 ---
 
+# Your first performance test
+
+Creating the scenario
+
 ```kotlin
 private val scenario = scenario("Browse Books V1") // define the workflow that should be tested
     .exec(
@@ -91,6 +104,10 @@ private val scenario = scenario("Browse Books V1") // define the workflow that s
 
 ---
 
+# Your first performance test
+
+Building a request
+
 ```kotlin
 fun getBooks(): ChainBuilder { // define a single request
     return exec(
@@ -102,6 +119,10 @@ fun getBooks(): ChainBuilder { // define a single request
 ```
 
 ---
+
+# Your first performance test
+
+Initializing the simulation
 
 ```kotlin 
 init {
@@ -119,15 +140,24 @@ init {
 
 ---
 
-![v1-test-results.png](v1-test-results.png)
+# Your first performance test
+
+Test Results
+
+![v1-test-results.png](./v1-test-results.png)
 
 ---
 
-# Analyzing the test results
+# Your first performance test
+
+Analyzing the test results
 
 - We can see that requests take too long when the load is high
-- We can derive from that, that we should be using pagination for the browsing of books, instead of just getting all
+- We know that there is currently no pagination
+- We can derive from that, that we should probably be using pagination for the browsing of books, instead of just getting all
   books everytime
+
+<br>
 
 ```kotlin
 fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
@@ -146,6 +176,16 @@ fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
 ```
 
 ---
+
+# Your first performance test
+
+The caveats
+
+- Great, we can now write performance tests and draw conclusions from them
+- 🤔 But what if we continue adding performance tests?
+- 🤔 And what if the API changes?
+
+---
 layout: section
 ---
 
@@ -155,9 +195,16 @@ layout: section
 
 # Making the repo maintainable
 
-- extract Http Calls using the Page-Object pattern
-- Define response time assertions as a constant
-- Define load sizes as constants
+We should...
+- 📝 Extract Http Calls using the Page-Object pattern
+- 📝 Define response time assertions as a constant
+- 📝 Define load sizes as constants
+
+---
+
+# Making the repo maintainable
+
+Page Object Pattern
 
 ```kotlin
 object BooksPage {
@@ -175,16 +222,44 @@ object BooksPage {
 
 ---
 
+# Making the repo maintainable
+
+Define constants
+
+```kotlin
+const val HIGH_NUMBER_OF_USERS = 10_000
+
+val LOW_RESPONSE_TIME = arrayOf(
+  CoreDsl.global().responseTime().max().lt(100),
+  CoreDsl.global().responseTime().mean().lt(50),
+  CoreDsl.global().successfulRequests().percent().gt(95.0),
+)
+
+val MEDIUM_RESPONSE_TIME = arrayOf(
+  CoreDsl.global().responseTime().max().lt(1000),
+  CoreDsl.global().responseTime().mean().lt(300),
+  CoreDsl.global().successfulRequests().percent().gt(95.0),
+)
+```
+
+<br>
+
+- ❗ These constants change with your business requirements
+- 📝 You need to define those requirements with your stakeholders
+- 📝 You should consult your monitoring to figure out realistic user loads etc.
+
+---
+
 # A note about the Gatling Session object
 
 - Why do we store the response values in the session?
-    - We can access them later when sending other requests
-    - Storing all of the values all the time will later allow us to easily generate page objects automatically
-    - But how do we access the values?
-    - Read: `"#{}"` / `get` inside of exec
-        - "Only Gatling SDK methods will interpolate Gatling EL Strings. You can’t use Gatling EL in your own methods or
-          functions."
-            - https://docs.gatling.io/concepts/session/el/
+  - We can access them later when sending other requests
+  - Storing all of the values all the time will later allow us to easily generate page objects automatically
+  - But how do we access the values?
+  - Read: `"#{}"` / `get` inside of exec
+    - "Only Gatling SDK methods will interpolate Gatling EL Strings. You can’t use Gatling EL in your own methods or
+      functions."
+      - https://docs.gatling.io/concepts/session/el/
 
 ---
 
@@ -210,10 +285,10 @@ fun getBookByIdFromSession(): ChainBuilder {
 
 # Making the repo maintainable
 
-- This approach creates a lot of repetitive code
+- This approach still creates a lot of repetitive code
     - set query params and body
     - check that the request was successful
-    - save all response values
+    - save response values
     - We can avoid all of that boilerplate code using code generation
 
 ---
@@ -224,8 +299,14 @@ fun getBookByIdFromSession(): ChainBuilder {
 - Unfortunately, there exists no good OAS Generator for page objects
 - So what can we do instead?
 
-Hey Claude, please create Gatling PageObjects in Kotlin and without comments for the OpenAPI Spec that I provided here:
+Prompt:
+<cite>Hey Claude, please create Gatling PageObjects in Kotlin and without comments for the OpenAPI Spec that I provided here:</cite>
 
+---
+
+# Making the repo maintainable
+
+Input:
 ```yaml
 paths:
   /v1/books:
@@ -247,6 +328,9 @@ paths:
 
 ---
 
+# Making the repo maintainable
+ 
+Output:
 ```kotlin
 package api
 
@@ -254,38 +338,20 @@ import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.http.HttpDsl.*
 
 object BooksApi {
+  val getAllBooks = exec(
+    http("GET All Books - /v1/books")
+      .get("/v1/books")
+      .check(status().`is`(200))
+  )
 
-    val getAllBooks =
-        exec(
-            http("GET All Books - /v1/books")
-                .get("/v1/books")
-                .check(status().`is`(200))
-        )
-
-    val getBooksPaginated =
-        exec(
-            http("GET Books Paginated - /books")
-                .get("/books")
-                .queryParam("page", "#{page}")
-                .queryParam("size", "#{size}")
-                .check(status().`is`(200))
-        )
-
-    val getBooksPaginatedWithDefaults =
-        exec { session ->
-            val page = session.getIntOrNull("page") ?: 0
-            val size = session.getIntOrNull("size") ?: 20
-            session.setAll(mapOf("page" to page, "size" to size))
-        }.exec(getBooksPaginated)
-
-    fun getBooks(page: Int = 0, size: Int = 20) =
-        exec(
-            http("GET Books page=$page size=$size")
-                .get("/books")
-                .queryParam("page", page)
-                .queryParam("size", size)
-                .check(status().`is`(200))
-        )
+  val getBooksPaginated = exec(
+    http("GET Books Paginated - /books")
+        .get("/books")
+        .queryParam("page", "#{page}")
+        .queryParam("size", "#{size}")
+        .check(status().`is`(200))
+  )
+  /* ... */
 }
 ```
 
@@ -293,18 +359,34 @@ object BooksApi {
 
 # Making the repo maintainable
 
-- This approach is not deterministic
-- A good alternative: Hey Claude, write a Gradle Task that converts any OpenApi Spec into Gatling Page Objects in Kotlin
-  without comments. Apply TDD for development. Here is a reference for the OpenAPI Spec: ...
-- The task is deterministic. It always works the same
-- Because the task is deterministic, it is verifiable
-- If the task doesn't work, you (or AI) can fix it
+- ❌️ <em>Problem:</em> This approach is not deterministic
+
+A good alternative:
+
+Prompt:
+<cite>Hey Claude, write a Gradle Task that converts any OpenApi Spec into Gatling Page Objects in Kotlin
+    without comments. Apply TDD for development. Here is a reference for the OpenAPI Spec: ... </cite>
+
+- ✅ A gradle task is deterministic. It always works the same
+- ✅ Because the task is deterministic, it is verifiable
+- ✅ If the task doesn't work, you (or AI) can fix it
+
+I understand if you are sceptical about this approach as well. Feel free to try it out and see how well it works for you
 
 ---
 layout: section
 ---
 
 # Integrate gatling in your CI pipeline
+
+---
+
+# Integrate gatling in your CI pipeline
+
+- We now know how to write performance tests using gatling
+- We know how to run performance tests and how to read the report
+- We refactored the code so that changes to the API will result in the least amount of effort for as as possible
+- 
 
 ---
 
