@@ -47,8 +47,18 @@ sealed class ResponseSpec {
     /** Operation returns a JSON object; these top-level fields are saved to the session. */
     data class ObjectFields(val fieldNames: List<String>) : ResponseSpec()
 
-    /** Operation returns a JSON array; the whole list is saved under [sessionKey]. */
+    /** Operation returns a JSON array of primitives; the whole list is saved under [sessionKey]. */
     data class ArrayBody(val sessionKey: String) : ResponseSpec()
+
+    /**
+     * Operation returns a JSON array of objects. The whole list is saved under [listSessionKey],
+     * and each item field is saved as a random pick under its field name — enabling subsequent
+     * session-variant calls (e.g. getXxxByIdFromSession) to chain off a browsing response.
+     */
+    data class ArrayOfObjects(
+        val listSessionKey: String,
+        val itemFields: List<String>,
+    ) : ResponseSpec()
 }
 
 data class PageOperation(
@@ -183,7 +193,14 @@ internal object OpenApiParser {
 
         return if (schema.type == OAS_TYPE_ARRAY || schema is ArraySchema) {
             val sessionKey = (op.operationId ?: "response") + ARRAY_SESSION_KEY_SUFFIX
-            status to ResponseSpec.ArrayBody(sessionKey)
+            val items = (schema as? ArraySchema)?.items ?: schema.items
+            val resolvedItems = items?.let { resolveRef(it, api) }
+            val itemFields = resolvedItems?.let { collectProperties(it, api).keys.toList() } ?: emptyList()
+            if (itemFields.isEmpty()) {
+                status to ResponseSpec.ArrayBody(sessionKey)
+            } else {
+                status to ResponseSpec.ArrayOfObjects(sessionKey, itemFields)
+            }
         } else {
             status to ResponseSpec.ObjectFields(collectProperties(schema, api).keys.toList())
         }
@@ -422,6 +439,12 @@ internal object KotlinPageEmitter {
             is ResponseSpec.None -> {}
             is ResponseSpec.ArrayBody ->
                 appendLine("                .check(jsonPath(\"$DOLLAR[*]\").ofList().saveAs(\"${r.sessionKey}\"))")
+            is ResponseSpec.ArrayOfObjects -> {
+                appendLine("                .check(jsonPath(\"$DOLLAR[*]\").ofList().saveAs(\"${r.listSessionKey}\"))")
+                r.itemFields.forEach { field ->
+                    appendLine("                .check(jsonPath(\"$DOLLAR[*].$field\").ofList().findRandom().saveAs(\"$field\"))")
+                }
+            }
             is ResponseSpec.ObjectFields ->
                 r.fieldNames.forEach { field ->
                     appendLine("                .check(jsonPath(\"$DOLLAR.$field\").saveAs(\"$field\"))")

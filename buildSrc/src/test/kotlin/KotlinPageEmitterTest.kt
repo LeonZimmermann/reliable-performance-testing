@@ -326,6 +326,27 @@ class KotlinPageEmitterTest {
     }
 
     @Test
+    fun `ArrayOfObjects saves whole list and one random pick per field`() {
+        val code = emit(ops = arrayOf(get(response = ResponseSpec.ArrayOfObjects(
+            listSessionKey = "booksList",
+            itemFields = listOf("id", "title"),
+        ))))
+        assertTrue(code.contains("""jsonPath("$[*]").ofList().saveAs("booksList")"""))
+        assertTrue(code.contains("""jsonPath("$[*].id").ofList().findRandom().saveAs("id")"""))
+        assertTrue(code.contains("""jsonPath("$[*].title").ofList().findRandom().saveAs("title")"""))
+    }
+
+    @Test
+    fun `ArrayOfObjects with no fields still saves whole list`() {
+        val code = emit(ops = arrayOf(get(response = ResponseSpec.ArrayOfObjects(
+            listSessionKey = "booksList",
+            itemFields = emptyList(),
+        ))))
+        assertTrue(code.contains("""jsonPath("$[*]").ofList().saveAs("booksList")"""))
+        assertFalse(code.contains("findRandom"))
+    }
+
+    @Test
     fun `ObjectFields response adds one jsonPath check per field`() {
         val code = emit(ops = arrayOf(get(
             response = ResponseSpec.ObjectFields(listOf("id", "name", "price"))

@@ -453,6 +453,78 @@ class OpenApiParserTest {
     }
 
     @Test
+    fun `array of objects via inline schema maps to ArrayOfObjects`() {
+        val op = singleOp("""
+            openapi: 3.0.3
+            info:
+              title: T
+              version: 1.0.0
+            paths:
+              /items:
+                get:
+                  operationId: listItems
+                  tags: [Items]
+                  responses:
+                    '200':
+                      content:
+                        application/json:
+                          schema:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  format: int64
+                                name:
+                                  type: string
+        """)
+
+        assertEquals(
+            ResponseSpec.ArrayOfObjects("listItemsList", listOf("id", "name")),
+            op.response,
+        )
+    }
+
+    @Test
+    fun `array of objects via component ref maps to ArrayOfObjects with referenced fields`() {
+        val op = singleOp("""
+            openapi: 3.0.3
+            info:
+              title: T
+              version: 1.0.0
+            paths:
+              /books:
+                get:
+                  operationId: getAllBooks
+                  tags: [Books]
+                  responses:
+                    '200':
+                      content:
+                        application/json:
+                          schema:
+                            type: array
+                            items:
+                              ${'$'}ref: '#/components/schemas/Book'
+            components:
+              schemas:
+                Book:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      format: int64
+                    title:
+                      type: string
+        """)
+
+        assertEquals(
+            ResponseSpec.ArrayOfObjects("getAllBooksList", listOf("id", "title")),
+            op.response,
+        )
+    }
+
+    @Test
     fun `array response session key is operationId + List suffix`() {
         val op = singleOp("""
             openapi: 3.0.3

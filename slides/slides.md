@@ -44,6 +44,7 @@ duration: 45min
 # Your first performance test
 
 Some background information on the system under test:
+
 - A tiny book store has gone viral, because of an video of an influencer
 - The book store decided to create an online shop and now needs to be able to handle lots of users simultaneously
 - There is a page where users can scroll through books. This feature is heavily used
@@ -79,26 +80,24 @@ object FirstSimulation : Simulation() {
 
 ```kotlin
 private val scenario = scenario("Browse Books V1") // define the workflow that should be tested
-  .exec(
-    group("Browse Books").on( // grouping makes it easier to read the results
-      exec(getBooks()), // execute the getBooks request defined below
-      pause(1), // pause for one second
-      exec(getBooks())
+    .exec(
+        group("Browse Books").on( // grouping makes it easier to read the results
+            exec(getBooks()), // execute the getBooks request defined below
+            pause(1), // pause for one second
+            exec(getBooks())
+        )
     )
-  )
 ```
 
 ---
 
 ```kotlin
 fun getBooks(): ChainBuilder { // define a single request
-  return exec(
-    http("getBooks")
-      .get("${Constants.BASE_URL}/books") // GET request
-      .queryParam("page", 1) // pass query parameters
-      .queryParam("size", 10)
-      .check(status().`is`(200)) // checks the response body
-  )
+    return exec(
+        http("getBooks")
+            .get("${Constants.BASE_URL}/books") // GET request
+            .check(status().`is`(200)) // checks the response body
+    )
 }
 ```
 
@@ -106,31 +105,55 @@ fun getBooks(): ChainBuilder { // define a single request
 
 ```kotlin 
 init {
-  setUp(scenario.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
-    .protocols(HTTP_PROTOCOL)
-    .assertions(
-      global().responseTime().max()
-        .lt(100), // You need to define values according to your business requirements
-      global().responseTime().mean().lt(50),
-      global().successfulRequests().percent()
-        .gt(95.0), // Under load some requests might fail. That can always happen
-    )
+    setUp(scenario.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
+        .protocols(HTTP_PROTOCOL)
+        .assertions(
+            global().responseTime().max()
+                .lt(100), // You need to define values according to your business requirements
+            global().responseTime().mean().lt(50),
+            global().successfulRequests().percent()
+                .gt(95.0), // Under load some requests might fail. That can always happen
+        )
 }
 ```
 
 ---
 
-TODO: Show results of the test and interpret them
+![v1-test-results.png](v1-test-results.png)
+
+---
+
+# Analyzing the test results
+
+- We can see that requests take too long when the load is high
+- We can derive from that, that we should be using pagination for the browsing of books, instead of just getting all
+  books everytime
+
+```kotlin
+fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
+    var req = http("getBooks").get("/books")
+    if (page != null) req = req.queryParam("page", page) // passing request parameters
+    if (size != null) req = req.queryParam("size", size)
+    return exec(req
+      .check(status().`is`(200))
+      .check(jsonPath("$.content").saveAs("content")) // store all response values with check().saveAs() in Gatlings Session object
+      .check(jsonPath("$.totalElements").saveAs("totalElements"))
+      .check(jsonPath("$.totalPages").saveAs("totalPages"))
+      .check(jsonPath("$.size").saveAs("size"))
+      .check(jsonPath("$.number").saveAs("number"))
+    )
+}
+```
 
 ---
 layout: section
 ---
 
-# Make the repo maintainable
+# Making the repo maintainable
 
 ---
 
-# Make the repo maintainable
+# Making the repo maintainable
 
 - extract Http Calls using the Page-Object pattern
 - Define response time assertions as a constant
@@ -138,22 +161,15 @@ layout: section
 
 ```kotlin
 object BooksPage {
-  /* ... */
-  fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
-    var req = http("getBooks").get("$baseUrl/books")
-    if (page != null) req = req.queryParam("page", page) // add queryParams
-    if (size != null) req = req.queryParam("size", size)
-    return exec(Authentication.ensureValidToken) // will be explained later in the talk
-      .exec(req
-        .check(statusIs(200)) // make sure that the request is successful
-        .check(jsonPath("$.content").saveAs("content")) // store all response values with check().saveAs() in Gatlings Session object
-        .check(jsonPath("$.totalElements").saveAs("totalElements"))
-        .check(jsonPath("$.totalPages").saveAs("totalPages"))
-        .check(jsonPath("$.size").saveAs("size"))
-        .check(jsonPath("$.number").saveAs("number"))
-      )
-  }
-  /* ... */
+    /* ... */
+    fun getAllBooks(): ChainBuilder {
+      /* ... */
+    }
+  
+    fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
+      /* ... */
+    }
+    /* ... */
 }
 ```
 
@@ -162,35 +178,59 @@ object BooksPage {
 # A note about the Gatling Session object
 
 - Why do we store the response values in the session?
-  - We can access them later when sending other requests
-  - Storing all of the values all the time will later allow us to easily generate page objects automatically
-  - But how do we access the values?
-  - Read: `"#{}"` / `get` inside of exec // TODO Give an example
+    - We can access them later when sending other requests
+    - Storing all of the values all the time will later allow us to easily generate page objects automatically
+    - But how do we access the values?
+    - Read: `"#{}"` / `get` inside of exec
+        - "Only Gatling SDK methods will interpolate Gatling EL Strings. You can’t use Gatling EL in your own methods or
+          functions."
+            - https://docs.gatling.io/concepts/session/el/
 
 ---
 
-# Make the repo maintainable
+```kotlin
+fun getBookByIdFromSession(): ChainBuilder {
+    var req = http("getBookById (session)").get("/books/#{id}") // id can be accessed with #{id}
+    return exec(
+        req
+            .check(status().`is`(200))
+            .check(jsonPath("$.title").saveAs("title"))
+            .check(jsonPath("$.author").saveAs("author"))
+            .check(jsonPath("$.isbn").saveAs("isbn"))
+            .check(jsonPath("$.price").saveAs("price"))
+            .check(jsonPath("$.publisher").saveAs("publisher"))
+            .check(jsonPath("$.authorIds").saveAs("authorIds"))
+            .check(jsonPath("$.id").saveAs("id"))
+            .check(jsonPath("$.authors").saveAs("authors"))
+    )
+}
+```
+
+---
+
+# Making the repo maintainable
 
 - This approach creates a lot of repetitive code
-  - set query params and body
-  - check that the request was successful
-  - save all response values
-  - We can avoid all of that boilerplate code using code generation
+    - set query params and body
+    - check that the request was successful
+    - save all response values
+    - We can avoid all of that boilerplate code using code generation
 
 ---
 
-# Make the repo maintainable
+# Making the repo maintainable
 
 - How do we generate that code automatically?
 - Unfortunately, there exists no good OAS Generator for page objects
 - So what can we do instead?
 
 Hey Claude, please create Gatling PageObjects in Kotlin and without comments for the OpenAPI Spec that I provided here:
+
 ```yaml
 paths:
   /v1/books:
     get:
-      tags: [Books]
+      tags: [ Books ]
       operationId: getAllBooks
       summary: Get all books (no pagination)
       responses:
@@ -215,46 +255,47 @@ import io.gatling.javaapi.http.HttpDsl.*
 
 object BooksApi {
 
-  val getAllBooks =
-    exec(
-      http("GET All Books - /v1/books")
-        .get("/v1/books")
-        .check(status().`is`(200))
-    )
+    val getAllBooks =
+        exec(
+            http("GET All Books - /v1/books")
+                .get("/v1/books")
+                .check(status().`is`(200))
+        )
 
-  val getBooksPaginated =
-    exec(
-      http("GET Books Paginated - /books")
-        .get("/books")
-        .queryParam("page", "#{page}")
-        .queryParam("size", "#{size}")
-        .check(status().`is`(200))
-    )
+    val getBooksPaginated =
+        exec(
+            http("GET Books Paginated - /books")
+                .get("/books")
+                .queryParam("page", "#{page}")
+                .queryParam("size", "#{size}")
+                .check(status().`is`(200))
+        )
 
-  val getBooksPaginatedWithDefaults =
-    exec { session ->
-      val page = session.getIntOrNull("page") ?: 0
-      val size = session.getIntOrNull("size") ?: 20
-      session.setAll(mapOf("page" to page, "size" to size))
-    }.exec(getBooksPaginated)
+    val getBooksPaginatedWithDefaults =
+        exec { session ->
+            val page = session.getIntOrNull("page") ?: 0
+            val size = session.getIntOrNull("size") ?: 20
+            session.setAll(mapOf("page" to page, "size" to size))
+        }.exec(getBooksPaginated)
 
-  fun getBooks(page: Int = 0, size: Int = 20) =
-    exec(
-      http("GET Books page=$page size=$size")
-        .get("/books")
-        .queryParam("page", page)
-        .queryParam("size", size)
-        .check(status().`is`(200))
-    )
+    fun getBooks(page: Int = 0, size: Int = 20) =
+        exec(
+            http("GET Books page=$page size=$size")
+                .get("/books")
+                .queryParam("page", page)
+                .queryParam("size", size)
+                .check(status().`is`(200))
+        )
 }
 ```
 
 ---
 
-# Make the repo maintainable
+# Making the repo maintainable
 
 - This approach is not deterministic
-- A good alternative: Hey Claude, write a Gradle Task that converts any OpenApi Spec into Gatling Page Objects in Kotlin without comments. Apply TDD for development. Here is a reference for the OpenAPI Spec: ...
+- A good alternative: Hey Claude, write a Gradle Task that converts any OpenApi Spec into Gatling Page Objects in Kotlin
+  without comments. Apply TDD for development. Here is a reference for the OpenAPI Spec: ...
 - The task is deterministic. It always works the same
 - Because the task is deterministic, it is verifiable
 - If the task doesn't work, you (or AI) can fix it
@@ -505,6 +546,7 @@ layout: section
 # How to generate test data
 
 Example of a feeder:
+
 ```kotlin
 private val bookFeeder = intArrayOf(100).map { index ->
     buildMap {
@@ -518,6 +560,7 @@ private val bookFeeder = intArrayOf(100).map { index ->
 ```
 
 Usage of the feeder:
+
 ```kotlin
 private val scenario = scenario("Create Many Books")
     .exec(Authentication.login())
@@ -530,17 +573,19 @@ private val scenario = scenario("Create Many Books")
 # How to generate test data
 
 Introducing domain and value objects:
+
 ```kotlin
 data class Book(
-  val title: Title, // Title value object instead of String
-  val author: Name, // Name value object instead of String
-  val isbn: ISBN,
-  val price: Price,
-  val publisher: Publisher? = null,
+    val title: Title, // Title value object instead of String
+    val author: Name, // Name value object instead of String
+    val isbn: ISBN,
+    val price: Price,
+    val publisher: Publisher? = null,
 )
 ```
 
 Generating a book:
+
 ```kotlin
 fun generate(): Book = Book(
     title = Title.generate(),
@@ -554,27 +599,30 @@ fun generate(): Book = Book(
 ---
 
 Generating a valid ISBN:
+
 ```kotlin
 @JvmInline
 value class ISBN(val value: String) {
-  companion object {
-    fun generate(): ISBN {
-      val prefix = "978"
-      val registrant = Random.nextInt(0, 10)
-      val publication = Random.nextInt(100, 1000)
-      val title = Random.nextInt(10000, 100000)
-      val checkDigit = calculateCheckDigit("$prefix$registrant$publication$title")
-      return ISBN("978-$registrant-$publication-$title-$checkDigit")
-    }
+    companion object {
+        fun generate(): ISBN {
+            val prefix = "978"
+            val registrant = Random.nextInt(0, 10)
+            val publication = Random.nextInt(100, 1000)
+            val title = Random.nextInt(10000, 100000)
+            val checkDigit = calculateCheckDigit("$prefix$registrant$publication$title")
+            return ISBN("978-$registrant-$publication-$title-$checkDigit")
+        }
 
-    private fun calculateCheckDigit(digits: String): Int { /* ... */ }
-  }
+        private fun calculateCheckDigit(digits: String): Int { /* ... */
+        }
+    }
 }
 ```
 
 ---
 
 Generating random Names:
+
 ```kotlin
 data class Name(val firstName: String, val lastName: String) {
     val fullName: String get() = "$firstName $lastName"
@@ -597,12 +645,13 @@ data class Name(val firstName: String, val lastName: String) {
 ---
 
 Mapping objects to feeders:
+
 ```kotlin
 interface TestDataGenerator<T> {
-  fun generate(): T
-  fun toSessionMap(value: T): Map<String, Any>
+    fun generate(): T
+    fun toSessionMap(value: T): Map<String, Any>
 
-  fun feeder(): Iterator<Map<String, Any>> = generateSequence { toSessionMap(generate()) }.iterator()
+    fun feeder(): Iterator<Map<String, Any>> = generateSequence { toSessionMap(generate()) }.iterator()
 }
 ```
 
@@ -620,6 +669,7 @@ object BookFeeder : TestDataGenerator<Book> {
     }
 }
 ```
+
 ---
 layout: two-cols
 ---
