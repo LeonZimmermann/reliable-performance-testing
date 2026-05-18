@@ -46,11 +46,17 @@ duration: 45min
 Some background information on the system under test:
 - A tiny book store has gone viral, because of an video of an influencer
 - The book store decided to create an online shop and now needs to be able to handle lots of users simultaneously
-- 
+- There is a page where users can scroll through books. This feature is heavily used
+
+---
+
+![screenshot-application.png](./screenshot-application.png)
+
+---
 
 ```kotlin
 object FirstSimulation : Simulation() {
-    private val browse = scenario("Browse Books V1") // define the workflow that should be tested
+    private val scenario = scenario("Browse Books V1") // Scenario: define the workflow that should be tested
     /* ... */
 
     fun getBooks(): ChainBuilder { /* ... */
@@ -62,7 +68,7 @@ object FirstSimulation : Simulation() {
         .contentTypeHeader("application/json")
 
     init {
-        setUp(browse.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
+        setUp(scenario.injectOpen(rampUsers(10_000).during(20.seconds))) // setUp: define injection profile and number of users
             .protocols(HTTP_PROTOCOL)
             .assertions(/* ... */)
     }
@@ -71,68 +77,50 @@ object FirstSimulation : Simulation() {
 
 ---
 
-# Your first performance test
+```kotlin
+private val scenario = scenario("Browse Books V1") // define the workflow that should be tested
+  .exec(
+    group("Browse Books").on( // grouping makes it easier to read the results
+      exec(getBooks()), // execute the getBooks request defined below
+      pause(1), // pause for one second
+      exec(getBooks())
+    )
+  )
+```
+
+---
 
 ```kotlin
-object FirstSimulation : Simulation() {
-    private val browse = scenario("Browse Books V1") // define the workflow that should be tested
-        .exec(
-            group("Browse Books").on( // grouping makes it easier to read the results
-                exec(getBooks()), // execute the getBooks request defined below
-                pause(1), // pause for one second
-                exec(getBooks())
-            )
-        )
-
-    fun getBooks(): ChainBuilder { // define a single request
-        return exec(
-            http("getBooks")
-                .get("${Constants.BASE_URL}/books")
-                .queryParam("page", 1)
-                .queryParam("size", 10)
-                .check(status().`is`(200)) // checks the response body
-        )
-    }
-
-    init {
-        setUp(browse.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
-            .protocols(HTTP_PROTOCOL)
-            .assertions(
-                global().responseTime().max()
-                    .lt(100), // You need to define values according to your business requirements
-                global().responseTime().mean().lt(50),
-                global().successfulRequests().percent()
-                    .gt(95.0), // Under load some requests might fail. That can always happen
-            )
-    }
+fun getBooks(): ChainBuilder { // define a single request
+  return exec(
+    http("getBooks")
+      .get("${Constants.BASE_URL}/books") // GET request
+      .queryParam("page", 1) // pass query parameters
+      .queryParam("size", 10)
+      .check(status().`is`(200)) // checks the response body
+  )
 }
 ```
 
---- 
+---
 
-# How Gatlings session works
+```kotlin 
+init {
+  setUp(scenario.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
+    .protocols(HTTP_PROTOCOL)
+    .assertions(
+      global().responseTime().max()
+        .lt(100), // You need to define values according to your business requirements
+      global().responseTime().mean().lt(50),
+      global().successfulRequests().percent()
+        .gt(95.0), // Under load some requests might fail. That can always happen
+    )
+}
+```
 
-- essentially a map storing data that can be used in requests
-- Write: `check(jsonPath().saveAs()) / set inside of exec`
-- Read: `"#{}"` / `get` inside of exec
+---
 
-
-- ```kotlin
-  fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
-        var req = http("getBooks").get("$baseUrl/books")
-        if (page != null) req = req.queryParam("page", page)
-        if (size != null) req = req.queryParam("size", size)
-        return exec(Authentication.ensureValidToken)
-            .exec(req
-                .check(statusIs(200))
-                .check(jsonPath("$.content").saveAs("content"))
-                .check(jsonPath("$.totalElements").saveAs("totalElements"))
-                .check(jsonPath("$.totalPages").saveAs("totalPages"))
-                .check(jsonPath("$.size").saveAs("size"))
-                .check(jsonPath("$.number").saveAs("number"))
-            )
-    }
-  ```
+TODO: Show results of the test and interpret them
 
 ---
 layout: section
@@ -150,28 +138,34 @@ layout: section
 
 ```kotlin
 object BooksPage {
-    
-    /* ... */
-    
-    fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
-        var req = http("getBooks").get("$baseUrl/books")
-        if (page != null) req = req.queryParam("page", page) // add queryParams
-        if (size != null) req = req.queryParam("size", size)
-        return exec(Authentication.ensureValidToken) // will be explained later in the talk
-            .exec(req
-                .check(statusIs(200)) // make sure that the request is successful
-                .check(jsonPath("$.content").saveAs("content")) // store all response values with check().saveAs()
-                .check(jsonPath("$.totalElements").saveAs("totalElements"))
-                .check(jsonPath("$.totalPages").saveAs("totalPages"))
-                .check(jsonPath("$.size").saveAs("size"))
-                .check(jsonPath("$.number").saveAs("number"))
-            )
-    }
-
-    /* ... */
-  
+  /* ... */
+  fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
+    var req = http("getBooks").get("$baseUrl/books")
+    if (page != null) req = req.queryParam("page", page) // add queryParams
+    if (size != null) req = req.queryParam("size", size)
+    return exec(Authentication.ensureValidToken) // will be explained later in the talk
+      .exec(req
+        .check(statusIs(200)) // make sure that the request is successful
+        .check(jsonPath("$.content").saveAs("content")) // store all response values with check().saveAs() in Gatlings Session object
+        .check(jsonPath("$.totalElements").saveAs("totalElements"))
+        .check(jsonPath("$.totalPages").saveAs("totalPages"))
+        .check(jsonPath("$.size").saveAs("size"))
+        .check(jsonPath("$.number").saveAs("number"))
+      )
+  }
+  /* ... */
 }
 ```
+
+---
+
+# A note about the Gatling Session object
+
+- Why do we store the response values in the session?
+  - We can access them later when sending other requests
+  - Storing all of the values all the time will later allow us to easily generate page objects automatically
+  - But how do we access the values?
+  - Read: `"#{}"` / `get` inside of exec // TODO Give an example
 
 ---
 
@@ -181,14 +175,15 @@ object BooksPage {
   - set query params and body
   - check that the request was successful
   - save all response values
-
-What can we do to reduce boilerplate?
+  - We can avoid all of that boilerplate code using code generation
 
 ---
 
 # Make the repo maintainable
 
-- We can generate that code automatically
+- How do we generate that code automatically?
+- Unfortunately, there exists no good OAS Generator for page objects
+- So what can we do instead?
 
 Hey Claude, please create Gatling PageObjects in Kotlin and without comments for the OpenAPI Spec that I provided here:
 ```yaml
@@ -207,34 +202,11 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Book'
-  /books:
-    get:
-      tags: [Books]
-      operationId: getBooks
-      summary: Get all books (paginated)
-      parameters:
-        - in: query
-          name: page
-          schema:
-            type: integer
-            default: 0
-          required: false
-        - in: query
-          name: size
-          schema:
-            type: integer
-            default: 20
-          required: false
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BookPage'
+...
 ```
 
-Result:
+---
+
 ```kotlin
 package api
 
