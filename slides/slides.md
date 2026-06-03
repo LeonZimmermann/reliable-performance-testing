@@ -15,19 +15,6 @@ duration: 45min
 
 ---
 
-# Outline
-
-- The Goal of this talk
-- When and why performance testing matters
-- Your first performance test
-- Refactoring your first performance test
-- How to make the codebase more maintainable
-- How to model your tests correctly
-- How to implement CI
-- How to solve common problems in performance testing
-
----
-
 # The Goal of this talk
 
 - Get you started with your first performance test
@@ -38,26 +25,11 @@ duration: 45min
 
 ---
 
-# When and why performance testing matters
-
-- An application with poor performance slows down the user and also the developers
-- Poor performance leads to longer development times because manual and automated tests take longer
-- Crucial for usability
-- ISO 9241-11 Ergonomics of human-system interaction
-    - Effectiveness
-    - Efficiency
-    - Satisfaction
--
-- https://arxiv.org/abs/2408.12736
-- https://www.sciencedirect.com/science/article/abs/pii/S0164121207000088
-
----
-
 # Your first performance test
 
 Some background information on the system under test
 
-- A tiny book store has gone viral, because of an video of an influencer
+- A tiny book store has gone viral, because of a video of an influencer
 - The book store decided to create an online shop and now needs to be able to handle lots of users simultaneously
 - There is a page where users can scroll through books. This feature is heavily used
 
@@ -65,7 +37,7 @@ Some background information on the system under test
 
 # Your first performance test
 
-The UI of the application
+The UI of the application - No pagination
 
 ![screenshot-application.png](./screenshot-application.png)
 
@@ -221,14 +193,19 @@ Page Object Pattern
 
 ```kotlin
 object BooksPage {
-    /* ... */
+    
     fun getAllBooks(): ChainBuilder {
-      /* ... */
+      return exec(
+        http("getBooks")
+          .get("${Constants.BASE_URL}/books") // GET request
+          .check(status().`is`(200)) // checks the response body
+      )
     }
   
     fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
       /* ... */
     }
+  
     /* ... */
 }
 ```
@@ -276,13 +253,15 @@ val MEDIUM_RESPONSE_TIME = arrayOf(
 
 ---
 
+# A note about the Gatling Session object
+
 ```kotlin
 fun getBookByIdFromSession(): ChainBuilder {
-    var req = http("getBookById (session)").get("/books/#{id}") // id can be accessed with #{id}
+    var req = http("getBookById (session)").get("/books/#{id}") // id can be accessed from session with #{id}
     return exec(
         req
             .check(status().`is`(200))
-            .check(jsonPath("$.title").saveAs("title"))
+            .check(jsonPath("$.title").saveAs("title")) // store values in session for later usage
             .check(jsonPath("$.author").saveAs("author"))
             .check(jsonPath("$.isbn").saveAs("isbn"))
             .check(jsonPath("$.price").saveAs("price"))
@@ -372,7 +351,9 @@ object BooksApi {
 
 # Making the repo maintainable
 
-- ❌️ <em>Problem:</em> This approach is not deterministic
+- 😲 This actually looks quite good
+
+- ❌️ <em>But:</em> This approach is not deterministic
 
 A good alternative:
 
@@ -411,10 +392,10 @@ But...
 
 Guidelines
 
-- 📝 Run application and gatling locally for testing purposes
-- 📝 Run application and gatling in Pipeline for CI quality gates
-- 📝 Run application on a dedicated server and gatling in pipeline for dedicated tests
-- 📝 Run gatling against prod environment for dedicated tests (analyze when a good time is beforehand)
+- 📝 Run application and gatling <b>locally for debugging</b> purposes
+- 📝 Run application and gatling <b>in Pipeline for CI quality gates</b>
+- 📝 Either run application on a <b>dedicated server</b> and gatling in pipeline for <b>dedicated tests</b>
+- 📝 Or run gatling against prod environment for dedicated tests (analyze when a good time is beforehand)
 - 📝 Always monitor your application during performance tests
 
 ---
@@ -436,6 +417,20 @@ layout: two-cols
 
 # Integrate gatling in your CI pipeline
 
+This is what it could look like
+
+- Run performance tests on demand with the press of a button
+- Selection for the environment against which the test should run
+- Selection for the test
+
+::right::
+
+<img src="./pipeline-workflow.png" style="padding: 120px 50px;height: 500px"/>
+
+---
+
+# Integrate gatling in your CI pipeline
+
 Deciding when to run which test
 
 - This is pretty much on you
@@ -445,10 +440,6 @@ Deciding when to run which test
 - You should have the possibility to run a specific test against a specific stage with the press of a button and receive
   the gatling report and monitoring data
 - A good compromise: You can define simulations that should be run during the night
-
-::right::
-
-![Pipeline Workflow](./pipeline-workflow.png)
 
 ---
 
@@ -513,16 +504,30 @@ layout: section
 
 # Examples for injection profile usages
 
-- Scenario 1: You want to test if the book store can handle the average amount of users properly
+### Scenario 1
+- You want to test if the book store can handle the average amount of users properly
     - You start with rampUsers for a few seconds then continue with constantUsersPerSec
     - You should look into your monitoring application to figure out the average amount of users
-- Scenario 2: You want to test if there are memory leaks in the book store application
+
+---
+
+# Examples for injection profile usages
+
+### Scenario 2
+
+- You want to test if there are memory leaks in the book store application
     - You run the constantUsersPerSec for a very long time, for example for two hours against a dedicated machine
     - You monitor memory usage and see if the memory usages increases significantly over time
     - You can do this with different sets of requests to figure out which requests cause issues
     - Once you have found significant increased memory usages you should run the application locally and use the
       profiler to investigate further
-- Scenario 3: The book store now sells tickets for signature sessions with authors and you want to make sure that the
+
+---
+
+# Examples for injection profile usages
+
+### Scenario 3
+- The book store now sells tickets for signature sessions with authors and you want to make sure that the
   application can handle peaks when the sale starts
     - You need to guess the amount of users that try to login at peak times
     - You use atOnceUsers and see if the application can handle the load
@@ -545,10 +550,18 @@ layout: section
 
 # How to test endpoints that need authentication
 
+### Goal
+
 - Login request at the start of the simulation: `exec(Authentication.login(username, password))`
 - Before every request that needs to be authenticated: `exec(Authentication.ensureValidToken)`
 - Add Authorization Header to every request by adding it to the HTTP_PROTOCOL constant
 - Remove Authorization Header from login and refresh calls with `header("Authorization", "")`
+
+---
+
+# How to test endpoints that need authentication
+
+### Example
 
 BrowseBooksSimulation.kt
 
@@ -576,6 +589,8 @@ fun getAllBooks(): ChainBuilder {
 
 # How to test endpoints that need authentication
 
+### Implementation
+
 ```kotlin
 fun login(username: String, password: String): ChainBuilder = exec(
     http("Login")
@@ -601,8 +616,12 @@ fun login(username: String, password: String): ChainBuilder = exec(
 
 # How to test endpoints that need authentication
 
+### Implementation
+
 - Add Authorization header to every request by adding it to the HTTP_PROTOCOL constant
 - Before executing an authenticated request: `exec(Authentication.ensureValidToken)`
+
+<br>
 
 ```kotlin
 val HTTP_PROTOCOL = HttpDsl.http
@@ -611,6 +630,8 @@ val HTTP_PROTOCOL = HttpDsl.http
     .contentTypeHeader("application/json")
     .header("Authorization", "Bearer #{accessToken}")
 ```
+
+<br>
 
 ```kotlin
 val ensureValidToken: ChainBuilder =
@@ -621,6 +642,10 @@ val ensureValidToken: ChainBuilder =
 ```
 
 ---
+
+# How to test endpoints that need authentication
+
+### Implementation
 
 ```kotlin
 val refreshToken: ChainBuilder = exec(
@@ -718,6 +743,8 @@ fun generate(): Book = Book(
 
 ---
 
+# How to generate test data
+
 Generating a valid ISBN:
 
 ```kotlin
@@ -741,6 +768,8 @@ value class ISBN(val value: String) {
 
 ---
 
+# How to generate test data
+
 Generating random Names:
 
 ```kotlin
@@ -763,6 +792,8 @@ data class Name(val firstName: String, val lastName: String) {
 ```
 
 ---
+
+# How to generate test data
 
 Mapping objects to feeders:
 
@@ -789,19 +820,45 @@ object BookFeeder : TestDataGenerator<Book> {
     }
 }
 ```
+---
+layout: section
+---
+
+# Summary
 
 ---
-layout: two-cols
+
+# Summary
+
+- You can now write different kinds of performance tests
+- You know how to integrate them into your pipeline
+- You know how to run them and analyze the results
+- You know how to maintain the test code base
+- And you know how to solve common but difficult problems that may arise during the development of tests  
+
 ---
 
-My linked in profile
+# Feel free to connect and give feedback 😃
+
+<div class="grid grid-cols-2 gap-8">
+
+<div>
+
+### LinkedIn
 
 ![LinkedIn profile Leon Zimmermann](./qr-code-linked-in.png)
 https://www.linkedin.com/in/leon-zimmermann-5179831a4/
 
-::right::
 
-The github repository for this talk
+</div>
+
+<div>
+
+### The github repository for this talk
 
 ![Github Repository](./qr-code-github-repo.png)
 https://github.com/LeonZimmermann/reliable-performance-testing
+
+
+</div>
+</div>
