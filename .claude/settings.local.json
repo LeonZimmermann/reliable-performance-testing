@@ -29,7 +29,8 @@
       "Bash(./gradlew :buildSrc:test :gatling-tests:generateGatlingPages)",
       "Bash(./gradlew :gatling-tests:compileGatlingKotlin :backend:generateDomainObjects)",
       "Bash(./gradlew :buildSrc:test --no-daemon)",
-      "Bash(./gradlew :gatling-tests:compileGatlingKotlin --no-daemon)"
+      "Bash(./gradlew :gatling-tests:compileGatlingKotlin --no-daemon)",
+      "Bash(pnpm add *)"
     ]
   }
 }
