@@ -84,7 +84,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/oas-demo-backend:${{ github.sha }}
+          tags: ${{ secrets.ACR_LOGIN_SERVER }}/reliable-performance-testing-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -93,12 +93,12 @@ jobs:
         run: |
           az container create \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "oas-demo-${{ github.run_number }}" \
-            --image "${{ secrets.ACR_LOGIN_SERVER }}/oas-demo-backend:${{ github.sha }}" \
+            --name "reliable-performance-testing-${{ github.run_number }}" \
+            --image "${{ secrets.ACR_LOGIN_SERVER }}/reliable-performance-testing-backend:${{ github.sha }}" \
             --registry-login-server "${{ secrets.ACR_LOGIN_SERVER }}" \
             --registry-username "${{ secrets.ACR_USERNAME }}" \
             --registry-password "${{ secrets.ACR_PASSWORD }}" \
-            --dns-name-label "oas-demo-${{ github.run_number }}" \
+            --dns-name-label "reliable-performance-testing-${{ github.run_number }}" \
             --ports 8080 \
             --cpu 1 \
             --memory 1.5 \
@@ -112,7 +112,7 @@ jobs:
           if [[ "${{ inputs.stage }}" == "azure" ]]; then
             FQDN=$(az container show \
               --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-              --name "oas-demo-${{ github.run_number }}" \
+              --name "reliable-performance-testing-${{ github.run_number }}" \
               --query ipAddress.fqdn \
               --output tsv)
             echo "base_url=http://$FQDN:8080" >> $GITHUB_OUTPUT
@@ -132,5 +132,5 @@ jobs:
         run: |
           az container delete \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "oas-demo-${{ github.run_number }}" \
+            --name "reliable-performance-testing-${{ github.run_number }}" \
             --yes

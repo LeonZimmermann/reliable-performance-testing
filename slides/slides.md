@@ -110,9 +110,9 @@ Initializing the simulation
 ```kotlin 
 init {
     setUp(scenario.injectOpen(rampUsers(10_000).during(20.seconds))) // define injection profile and number of users
-        .protocols(HTTP_PROTOCOL)
+        .protocols(HTTP_PROTOCOL)   
         .assertions(
-            global().responseTime().max()
+            global().responseTime().percentile4() // use percentile4 instead of max to reduce flakiness of test
                 .lt(100), // You need to define values according to your business requirements
             global().responseTime().mean().lt(50),
             global().successfulRequests().percent()
@@ -139,7 +139,8 @@ Analyzing the test results
 
 - We can see that requests take too long when the load is high
 - We know that there is currently no pagination
-- We can derive from that, that we should probably be using pagination for the browsing of books, instead of just getting all
+- We can derive from that, that we should probably be using pagination for the browsing of books, instead of just
+  getting all
   books everytime
 
 <br>
@@ -149,13 +150,14 @@ fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
     var req = http("getBooks").get("/books")
     if (page != null) req = req.queryParam("page", page) // passing request parameters
     if (size != null) req = req.queryParam("size", size)
-    return exec(req
-      .check(status().`is`(200))
-      .check(jsonPath("$.content").saveAs("content")) // store all response values with check().saveAs() in Gatlings Session object
-      .check(jsonPath("$.totalElements").saveAs("totalElements"))
-      .check(jsonPath("$.totalPages").saveAs("totalPages"))
-      .check(jsonPath("$.size").saveAs("size"))
-      .check(jsonPath("$.number").saveAs("number"))
+    return exec(
+        req
+            .check(status().`is`(200))
+            .check(jsonPath("$.content").saveAs("content")) // store all response values with check().saveAs() in Gatlings Session object
+            .check(jsonPath("$.totalElements").saveAs("totalElements"))
+            .check(jsonPath("$.totalPages").saveAs("totalPages"))
+            .check(jsonPath("$.size").saveAs("size"))
+            .check(jsonPath("$.number").saveAs("number"))
     )
 }
 ```
@@ -181,6 +183,7 @@ layout: section
 # Making the repo maintainable
 
 We should...
+
 - 📝 Extract Http Calls using the Page-Object pattern
 - 📝 Define response time assertions as a constant
 - 📝 Define load sizes as constants
@@ -193,19 +196,19 @@ Page Object Pattern
 
 ```kotlin
 object BooksPage {
-    
+
     fun getAllBooks(): ChainBuilder {
-      return exec(
-        http("getBooks")
-          .get("${Constants.BASE_URL}/books") // GET request
-          .check(status().`is`(200)) // checks the response body
-      )
+        return exec(
+            http("getBooks")
+                .get("${Constants.BASE_URL}/books") // GET request
+                .check(status().`is`(200)) // checks the response body
+        )
     }
-  
+
     fun getBooks(page: Int? = null, size: Int? = null): ChainBuilder {
-      /* ... */
+        /* ... */
     }
-  
+
     /* ... */
 }
 ```
@@ -220,15 +223,15 @@ Define constants
 const val HIGH_NUMBER_OF_USERS = 10_000
 
 val LOW_RESPONSE_TIME = arrayOf(
-  CoreDsl.global().responseTime().max().lt(100),
-  CoreDsl.global().responseTime().mean().lt(50),
-  CoreDsl.global().successfulRequests().percent().gt(95.0),
+    CoreDsl.global().responseTime().percentile4().lt(100),
+    CoreDsl.global().responseTime().mean().lt(50),
+    CoreDsl.global().successfulRequests().percent().gt(95.0),
 )
 
 val MEDIUM_RESPONSE_TIME = arrayOf(
-  CoreDsl.global().responseTime().max().lt(1000),
-  CoreDsl.global().responseTime().mean().lt(300),
-  CoreDsl.global().successfulRequests().percent().gt(95.0),
+    CoreDsl.global().responseTime().percentile4().lt(1000),
+    CoreDsl.global().responseTime().mean().lt(300),
+    CoreDsl.global().successfulRequests().percent().gt(95.0),
 )
 ```
 
@@ -243,13 +246,13 @@ val MEDIUM_RESPONSE_TIME = arrayOf(
 # A note about the Gatling Session object
 
 - Why do we store the response values in the session?
-  - We can access them later when sending other requests
-  - Storing all of the values all the time will later allow us to easily generate page objects automatically
-  - But how do we access the values?
-  - Read: `"#{}"` / `get` inside of exec
-    - "Only Gatling SDK methods will interpolate Gatling EL Strings. You can’t use Gatling EL in your own methods or
-      functions."
-      - https://docs.gatling.io/concepts/session/el/
+    - We can access them later when sending other requests
+    - Storing all of the values all the time will later allow us to easily generate page objects automatically
+    - But how do we access the values?
+    - Read: `"#{}"` / `get` inside of exec
+        - "Only Gatling SDK methods will interpolate Gatling EL Strings. You can’t use Gatling EL in your own methods or
+          functions."
+            - https://docs.gatling.io/concepts/session/el/
 
 ---
 
@@ -292,13 +295,15 @@ fun getBookByIdFromSession(): ChainBuilder {
 - So what can we do instead?
 
 Prompt:
-<cite>Hey Claude, please create Gatling PageObjects in Kotlin and without comments for the OpenAPI Spec that I provided here:</cite>
+<cite>Hey Claude, please create Gatling PageObjects in Kotlin and without comments for the OpenAPI Spec that I provided
+here:</cite>
 
 ---
 
 # Making the repo maintainable
 
 Input:
+
 ```yaml
 paths:
   /v1/books:
@@ -321,8 +326,9 @@ paths:
 ---
 
 # Making the repo maintainable
- 
+
 Output:
+
 ```kotlin
 package api
 
@@ -330,20 +336,20 @@ import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.http.HttpDsl.*
 
 object BooksApi {
-  val getAllBooks = exec(
-    http("GET All Books - /v1/books")
-      .get("/v1/books")
-      .check(status().`is`(200))
-  )
+    val getAllBooks = exec(
+        http("GET All Books - /v1/books")
+            .get("/v1/books")
+            .check(status().`is`(200))
+    )
 
-  val getBooksPaginated = exec(
-    http("GET Books Paginated - /books")
-        .get("/books")
-        .queryParam("page", "#{page}")
-        .queryParam("size", "#{size}")
-        .check(status().`is`(200))
-  )
-  /* ... */
+    val getBooksPaginated = exec(
+        http("GET Books Paginated - /books")
+            .get("/books")
+            .queryParam("page", "#{page}")
+            .queryParam("size", "#{size}")
+            .check(status().`is`(200))
+    )
+    /* ... */
 }
 ```
 
@@ -359,7 +365,7 @@ A good alternative:
 
 Prompt:
 <cite>Hey Claude, write a Gradle Task that converts any OpenApi Spec into Gatling Page Objects in Kotlin
-    without comments. Apply TDD for development. Here is a reference for the OpenAPI Spec: ... </cite>
+without comments. Apply TDD for development. Here is a reference for the OpenAPI Spec: ... </cite>
 
 - ✅ A gradle task is deterministic. It always works the same
 - ✅ Because the task is deterministic, it is verifiable
@@ -379,9 +385,10 @@ layout: section
 
 - ✅ We now know how to write performance tests using gatling
 - ✅ We know how to run performance tests and how to read the report
-- ✅ We refactored the code so that changes to the API will result in the least amount of effort for as as possible
+- ✅ We refactored the code so that changes to the API will result in the least amount of effort
 
 But...
+
 - 🤔 How do we integrate all of this into our pipelines?
 - 🤔 When do we run tests? Periodically? On-Demand?
 - 🤔 Against which stage do we run our tests?
@@ -408,7 +415,7 @@ How do I run the tests in the pipeline?
 - Run your application using docker: `docker compose up`
 - Wait for the application to be ready using a custom bash probe
 - Seed data if necessary. You can just create and run a dedicated simulation for that
-- Run the performance test: `./gradlew gatlingRun -your.package.HelloSimulation`
+- Run the performance test: `./gradlew gatlingRun --simulation your.package.HelloSimulation`
 - Store the report and monitoring data
 
 ---
@@ -440,18 +447,6 @@ Deciding when to run which test
 - You should have the possibility to run a specific test against a specific stage with the press of a button and receive
   the gatling report and monitoring data
 - A good compromise: You can define simulations that should be run during the night
-
----
-
-# Considerations when integrating gatling in your CI pipeline
-
-- Pipeline runtime should be low. So maybe you dont want it to be an automatic CI task
-- Manual or nightly executions are good alternatives to a separate build step
-- Your approach is going to depend on how critical performance really is for your application
-- Maybe performance is not just a quality metric for you but actually a functional requirement. Then it should be run as
-  a separate build step
-    - Examples: Ticketing system. If it can't handle realistic spikes, its kind of useless, because no one will be able
-      to use it then
 
 ---
 layout: section
@@ -496,15 +491,32 @@ layout: section
 | constantUsersPerSec       | Constant rate of users per second	  | Sustained load testing   |
 | rampUsers               	 | Gradually increase users over time	 | Realistic traffic growth |
 | atOnceUsers               | All users start at once	            | Spike testing            |
-| stressPeak                | Peak stress pattern	                | Find breaking points     |
+| stressPeakUsers           | Peak stress pattern	                | Find breaking points     |
 
 [https://docs.gatling.io/ai/assistant/vscode/create-simulation/#step-3-injection-profile]
+
+---
+
+# Workload Models
+
+- There are two types of injection: closed and open
+- Closed systems, where you control the concurrent number of users
+- Open systems, where you control the arrival rate of users
+    - https://docs.gatling.io/testing-concepts/workload-models/
+
+<br>
+
+- constantUsersPerSec -> closed model
+- rampUsers -> open model
+
+- The correct workload model and therefore the correct injection profile depends on the kind of test you want to create
 
 ---
 
 # Examples for injection profile usages
 
 ### Scenario 1
+
 - You want to test if the book store can handle the average amount of users properly
     - You start with rampUsers for a few seconds then continue with constantUsersPerSec
     - You should look into your monitoring application to figure out the average amount of users
@@ -527,6 +539,7 @@ layout: section
 # Examples for injection profile usages
 
 ### Scenario 3
+
 - The book store now sells tickets for signature sessions with authors and you want to make sure that the
   application can handle peaks when the sale starts
     - You need to guess the amount of users that try to login at peak times
@@ -820,6 +833,7 @@ object BookFeeder : TestDataGenerator<Book> {
     }
 }
 ```
+
 ---
 layout: section
 ---
@@ -834,7 +848,7 @@ layout: section
 - You know how to integrate them into your pipeline
 - You know how to run them and analyze the results
 - You know how to maintain the test code base
-- And you know how to solve common but difficult problems that may arise during the development of tests  
+- And you know how to solve common but difficult problems that may arise during the development of tests
 
 ---
 
