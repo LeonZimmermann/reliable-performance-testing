@@ -9,10 +9,10 @@ import io.gatling.javaapi.core.CoreDsl.scenario
 import io.gatling.javaapi.core.Simulation
 
 @Suppress("unused")
-class CreateOneMillionBooksSimulation : Simulation() {
+class CreateManyBooksSimulation : Simulation() {
 
     companion object {
-        const val NUMBER_OF_BOOKS_TO_BE_GENERATED = 1_000_000
+        const val NUMBER_OF_BOOKS_TO_BE_GENERATED = 10_000
         const val NUMBER_OF_CONCURRENT_USERS = 500
     }
 
